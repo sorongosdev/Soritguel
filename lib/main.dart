@@ -19,7 +19,7 @@ class MyWidget extends StatelessWidget {
   const MyWidget({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) {  
     final micTopMargin = MediaQuery.of(context).size.height * 0.1;
     final textFieldTopMargin =
         MediaQuery.of(context).size.height * 0.03; // 화면 높이의 5%를 마진으로 설정
