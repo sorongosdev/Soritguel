@@ -31,6 +31,20 @@ class MyWidget extends StatelessWidget {
         MediaQuery.of(context).size.width * 0.05; // 화면 너비의 10%를 마진으로 설정
 
     return Scaffold(
+      // 앱바
+      appBar: AppBar(
+        title: Text('STT'),
+        centerTitle: true,
+        backgroundColor: Colors.blue,
+        actions: <Widget>[
+          IconButton(
+            icon: Icon(Icons.more_vert),
+            onPressed: () {
+              // 더보기 버튼이 눌렸을 때
+            },
+          ),
+        ],
+      ),
       backgroundColor: Colors.white,
       body: Column(
         mainAxisAlignment: MainAxisAlignment.start,
