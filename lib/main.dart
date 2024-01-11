@@ -37,11 +37,28 @@ class MyWidget extends StatelessWidget {
         centerTitle: true,
         backgroundColor: Colors.blue,
         actions: <Widget>[
-          IconButton(
+          // 더보기 버튼
+          PopupMenuButton<String>(
             icon: Icon(Icons.more_vert),
-            onPressed: () {
-              // 더보기 버튼이 눌렸을 때
-            },
+            // PopupMenuButton에서 itemBuilder을 필수적으로 구현해야함
+            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+              const PopupMenuItem<String>(
+                value: '새로시작',
+                child: Text('새로시작'),
+              ),
+              const PopupMenuItem<String>(
+                value: '저장',
+                child: Text('저장'),
+              ),
+              const PopupMenuItem<String>(
+                value: '불러오기',
+                child: Text('불러오기'),
+              ),
+              const PopupMenuItem<String>(
+                value: '공유하기',
+                child: Text('공유하기'),
+              ),
+            ],
           ),
         ],
       ),
