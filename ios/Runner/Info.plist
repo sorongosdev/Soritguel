@@ -45,7 +45,7 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
-<dict>
+
     <!-- ... 녹음 권한 ... -->
     <key>NSMicrophoneUsageDescription</key>
     <string>마이크 권한을 허용하시겠습니까?</string>

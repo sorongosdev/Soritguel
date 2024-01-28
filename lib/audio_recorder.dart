@@ -15,6 +15,7 @@ class AudioRecorder {
   bool _isRecording = false;
   String? _filePath; // 녹음한 파일 경로를 저장하기 위한 변수
 
+  // 서버로부터 메시지를 받아 토스트 메시지로 출력
   AudioRecorder() {
     _init();
     receivePort.listen((message) { // 추가
@@ -56,7 +57,7 @@ class AudioRecorder {
     final file = File(_filePath!);
     final jsonString = await Serializer.fileToJson(file);  // 파일을 JSON 형식으로 변환
 
-    // Isolate(쓰레드) 생성
+    // Isolate(쓰레드와 비슷한 개념) 생성 후 파일 전송
     Isolate.spawn(sendRecordedFile, {'sendPort': receivePort.sendPort, 'fileData': jsonString});  // JSON 문자열을 전달
   }
 
@@ -71,13 +72,12 @@ class AudioRecorder {
       return;
     }
 
-    //웹소켓 연결
+    // 웹소켓 연결, 현재 로컬서버
     final channel = WebSocketChannel.connect(
-      Uri.parse('ws://192.168.1.102:8080'),
+        Uri.parse('ws://192.168.1.102:8080'),
     );
 
-    // 바이너리 데이터를 문자열 형태로 변환하는 인코딩 방식
-    // 64개의 출력 가능 문자 (A-Z, a-z, 0-9, +, /)와 패딩을 위한 =를 사용하여 모든 바이너리 데이터를 표현
+    // stream에 데이터를 추가
     channel.sink.add(fileData);
 
     // 서버로부터의 응답을 받아 메인 Isolate로 전송
@@ -86,9 +86,10 @@ class AudioRecorder {
     });
   }
 
-  // 마이크 녹음 시작/중지 토글을 위해 필요
+  /// 마이크 녹음 시작/중지 토글을 위해 필요
   bool get isRecording => _isRecording;
 
+  /// 오디오 객체 해제
   void dispose() {
     _AudioRecorder!.closeRecorder();
     _AudioRecorder = null;

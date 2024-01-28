@@ -71,8 +71,6 @@ class _MicIconState extends State<MicIcon> {
     }
   }
 
-
-
   @override
   void dispose() {
     _AudioRecorder.dispose();
