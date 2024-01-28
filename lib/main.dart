@@ -5,6 +5,8 @@ import 'description_text.dart';
 import 'my_text_field.dart';
 import 'bottom_button_row.dart';
 
+/// 마진 정의
+/// UI를 보여줌
 void main() {
   runApp(const MyApp());
 }
@@ -31,7 +33,7 @@ class MyWidget extends StatelessWidget {
     final textFieldSideMargin =
         MediaQuery.of(context).size.width * 0.05; // 화면 너비의 5%를 마진으로 설정
     final textFieldMaxHeight =
-        MediaQuery.of(context).size.height * 0.6; // 화면 높이의 60%를 최대 높이로 설정
+        MediaQuery.of(context).size.height * 0.4; // 화면 높이의 45%를 최대 높이로 설정
     final buttonRowSideMargin =
         MediaQuery.of(context).size.width * 0.05; // 화면 너비의 5%를 마진으로 설정
 
