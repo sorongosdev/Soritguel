@@ -26,25 +26,26 @@ class AudioRecorder {
     });
   }
 
+  /// 오디오 초기화
   Future<void> _init() async {
     _AudioRecorder = FlutterSoundRecorder();
     await _AudioRecorder!.openRecorder();
   }
 
-  Future<void> startRecording() async {
-    // `Android/data/{프로젝트 이름}/`
-    Directory? directory = await getExternalStorageDirectory();
+    Future<void> startRecording() async {
+      // `Android/data/{프로젝트 이름}/`
+      Directory? directory = await getExternalStorageDirectory();
 
-    // 현재 시간을 yyyyMMdd_HHmmss 형태로 포맷
-    var now = DateTime.now();
-    var formatter = DateFormat('yyyyMMdd_HHmmss');
-    String formattedTime = formatter.format(now);
+      // 현재 시간을 yyyyMMdd_HHmmss 형태로 포맷
+      var now = DateTime.now();
+      var formatter = DateFormat('yyyyMMdd_HHmmss');
+      String formattedTime = formatter.format(now);
 
-    // 녹음한 파일 경로를 저장
-    _filePath = directory!.path + '/' + formattedTime + '.wav';
-    await _AudioRecorder!.startRecorder(toFile: _filePath);
-    _isRecording = true;
-  }
+      // 녹음한 파일 경로를 저장
+      _filePath = directory!.path + '/' + formattedTime + '.wav';
+      await _AudioRecorder!.startRecorder(toFile: _filePath);
+      _isRecording = true;
+    }
 
 
   Future<void> stopRecording() async {
