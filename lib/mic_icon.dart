@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'audio_recorder.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-
 class MicIcon extends StatefulWidget {
   final double micTopMargin;
 
@@ -30,6 +29,8 @@ class _MicIconState extends State<MicIcon> {
     }
     setState(() {});
   }
+
+
 
   ///마이크 권한 요청
   Future<bool> requestPermissions() async {
