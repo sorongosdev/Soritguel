@@ -6,7 +6,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import 'dart:isolate';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'serializer.dart';
-
+import 'package:intl/intl.dart';
 
 class AudioRecorder {
   ReceivePort receivePort = ReceivePort();
@@ -14,7 +14,6 @@ class AudioRecorder {
   FlutterSoundRecorder? _AudioRecorder;
   bool _isRecording = false;
   String? _filePath; // 녹음한 파일 경로를 저장하기 위한 변수
-  WebSocketChannel? _channel; // 웹소켓 채널
 
   AudioRecorder() {
     _init();
@@ -33,8 +32,16 @@ class AudioRecorder {
   }
 
   Future<void> startRecording() async {
+    // `Android/data/{프로젝트 이름}/`
     Directory? directory = await getExternalStorageDirectory();
-    _filePath = directory!.path + '/my_record.wav'; // 변경: 녹음한 파일 경로를 저장
+
+    // 현재 시간을 yyyyMMdd_HHmmss 형태로 포맷
+    var now = DateTime.now();
+    var formatter = DateFormat('yyyyMMdd_HHmmss');
+    String formattedTime = formatter.format(now);
+
+    // 녹음한 파일 경로를 저장
+    _filePath = directory!.path + '/' + formattedTime + '.wav';
     await _AudioRecorder!.startRecorder(toFile: _filePath);
     _isRecording = true;
   }
@@ -44,6 +51,7 @@ class AudioRecorder {
     await _AudioRecorder!.stopRecorder();
     _isRecording = false;
 
+    // 파일 경로
     final file = File(_filePath!);
     final jsonString = await Serializer.fileToJson(file);  // 파일을 JSON 형식으로 변환
 
@@ -56,11 +64,13 @@ class AudioRecorder {
     SendPort sendPort = args['sendPort'];
     String? fileData = args['fileData'];
 
+    // 보낼 녹음 파일이 없으면 메시지 출력
     if (fileData == null) {
       print('No recorded file to send');
       return;
     }
 
+    //웹소켓 연결
     final channel = WebSocketChannel.connect(
       Uri.parse('ws://192.168.1.102:8080'),
     );
@@ -75,6 +85,7 @@ class AudioRecorder {
     });
   }
 
+  // 마이크 녹음 시작/중지 토글을 위해 필요
   bool get isRecording => _isRecording;
 
   void dispose() {
