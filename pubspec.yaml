@@ -13,6 +13,10 @@ dependencies:
     sdk: flutter
   flutter_sound: ^9.2.13
   permission_handler: ^11.2.0
+  path_provider: ^2.1.2
+  web_socket_channel: ^2.4.0
+  fluttertoast: ^8.2.4
+  isolate: ^2.1.1
 
   cupertino_icons: ^1.0.2
 
