@@ -34,8 +34,19 @@ class AudioRecorder {
   }
 
     Future<void> startRecording() async {
+      Directory? directory;
+
+      // 안드로이드와 iOS에서 다르게 처리
+      if (Platform.isAndroid) {
+        // 안드로이드: 외부 저장소 사용
+        directory = await getExternalStorageDirectory();
+      } else if (Platform.isIOS) {
+        // iOS: 앱 문서 디렉토리 사용
+        directory = await getApplicationDocumentsDirectory();
+      }
+
       // `Android/data/{프로젝트 이름}/`
-      Directory? directory = await getExternalStorageDirectory();
+      // Directory? directory = await getExternalStorageDirectory();
 
       // 현재 시간을 yyyyMMdd_HHmmss 형태로 포맷
       var now = DateTime.now();
@@ -74,7 +85,7 @@ class AudioRecorder {
 
     // 웹소켓 연결, 현재 로컬서버
     final channel = WebSocketChannel.connect(
-        Uri.parse('ws://192.168.1.102:8080'),
+        Uri.parse('ws://192.168.1.101:8080'),
     );
 
     // stream에 데이터를 추가

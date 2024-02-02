@@ -6,7 +6,7 @@ import 'package:permission_handler/permission_handler.dart';
 class MicIcon extends StatefulWidget {
   final double micTopMargin;
 
-  const MicIcon({Key? key, required this.micTopMargin}) : super(key: key);
+  const MicIcon({super.key, required this.micTopMargin});
 
   @override
   _MicIconState createState() => _MicIconState();
@@ -22,6 +22,7 @@ class _MicIconState extends State<MicIcon> {
       await _AudioRecorder.stopRecording();
     } else {
       bool permissionGranted = await requestPermissions();
+      // bool permissionGranted = await requestPermissions(context);
       if (permissionGranted) {
         await _AudioRecorder.startRecording();
       }
@@ -33,26 +34,28 @@ class _MicIconState extends State<MicIcon> {
   Future<bool> requestPermissions() async {
     //마이크 권한 요청
     PermissionStatus status = await Permission.microphone.request();
+    print('Permission status: $status');
 
-    if(status.isGranted){
+    //권한이 있는 경우
+    if(status.isGranted || status.isPermanentlyDenied){
       return Future.value(true);
-    }
+    } //권한이 없는 경우
     else{
       bool goToSettings = await showDialog(
         context: context,
         builder: (BuildContext context) {
           return AlertDialog(
-            title: Text('마이크 권한이 필요합니다'),
-            content: Text('설정창으로 이동하시겠습니까?'),
+            title: const Text('마이크 권한이 필요합니다'),
+            content: const Text('설정창으로 이동하시겠습니까?'),
             actions: [
               TextButton(
-                child: Text('확인'),
+                child: const Text('확인'),
                 onPressed: () {
                   Navigator.of(context).pop(true); // 다이얼로그를 닫고 true를 반환
                 },
               ),
               TextButton(
-                child: Text('취소'),
+                child: const Text('취소'),
                 onPressed: () {
                   Navigator.of(context).pop(false); // 다이얼로그를 닫고 false를 반환
                 },
