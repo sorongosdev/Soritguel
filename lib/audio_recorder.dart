@@ -67,6 +67,7 @@ class AudioRecorder {
   Future<void> stopRecording() async {
     await _AudioRecorder!.stopRecorder();
     isRecording.value = false; // _isRecording 대신 isRecording 사용
+    receivedText.value = List.empty(); // 녹음이 중지되면 서버에서 받아오기 위해 사용했던 변수를 비워줌
 
     // 파일 경로
     final file = File(_filePath!);
