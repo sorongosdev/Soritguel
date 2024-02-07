@@ -3,28 +3,35 @@ import 'package:flutter/material.dart';
 import 'audio_recorder.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+/// 마이크 아이콘, 녹음 시작/중지 시 아이콘이 변경되어야하므로 Stateful 사용
 class MicIcon extends StatefulWidget {
   final double micTopMargin;
+  final AudioRecorder audioRecorder; // AudioRecorder 추가
+  final ValueNotifier<bool> isRecording; // 변경
 
-  const MicIcon({super.key, required this.micTopMargin});
+  const MicIcon({
+    Key? key,
+    required this.micTopMargin,
+    required this.audioRecorder, // 오디오 객체
+    required this.isRecording, // 마이크 아이콘 상태 변경을 위해 녹음중인지 판단하는 변수 필요
+
+  }) : super(key: key);
 
   @override
   _MicIconState createState() => _MicIconState();
 }
 
 class _MicIconState extends State<MicIcon> {
-  ///오디오 객체 생성
-  final AudioRecorder _AudioRecorder = AudioRecorder();
-
-  ///녹음중일 때 버튼을 한번 더 누르면 정지
+  /// 녹음중인지 관찰하고, 마이크 아이콘의 상태를 변경
   void _toggleRecording() async {
-    if (_AudioRecorder.isRecording) {
-      await _AudioRecorder.stopRecording();
+    if (widget.isRecording.value) { // 수정
+      await widget.audioRecorder.stopRecording();
+      widget.isRecording.value = false; // 수정
     } else {
       bool permissionGranted = await requestPermissions();
-      // bool permissionGranted = await requestPermissions(context);
       if (permissionGranted) {
-        await _AudioRecorder.startRecording();
+        await widget.audioRecorder.startRecording();
+        widget.isRecording.value = true; // 수정
       }
     }
     setState(() {});
@@ -75,19 +82,20 @@ class _MicIconState extends State<MicIcon> {
   }
 
   @override
-  void dispose() {
-    _AudioRecorder.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Container(
       margin: EdgeInsets.only(top: widget.micTopMargin),
-      child: FloatingActionButton(
-        onPressed: _toggleRecording,
-        backgroundColor: Colors.blue,
-        child: Icon(_AudioRecorder.isRecording ? Icons.mic_off : Icons.mic),
+      child: ValueListenableBuilder<bool>(
+        valueListenable: widget.isRecording, // 녹음 여부 변수 관찰
+        builder: (context, isRecording, child) {
+          return FloatingActionButton(
+            onPressed: _toggleRecording,
+            backgroundColor: Colors.blue,
+            child: Icon(
+              isRecording ? Icons.mic_off : Icons.mic,
+            ),
+          );
+        },
       ),
     );
   }

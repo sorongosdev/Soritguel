@@ -19,10 +19,10 @@ class Serializer {
     return base64Encode(fileBytes);
   }
 
-  // 파일을 읽어서 base64 문자열로 변환하고, 그것을 JSON 형식으로 반환하는 메서드
-  static Future<String> fileToJson(File file) async {
-    final base64Str = await serializeFile(file);
-    final json = {'file_data': base64Str};
-    return serialize(json);
-  }
+  // // 파일을 읽어서 base64 문자열로 변환하고, 그것을 JSON 형식으로 반환하는 메서드
+  // static Future<String> fileToJson(File file) async {
+  //   final base64Str = await serializeFile(file);
+  //   final json = {'file_data': base64Str};
+  //   return serialize(json);
+  // }
 }

@@ -4,15 +4,14 @@ import 'mic_icon.dart';
 import 'description_text.dart';
 import 'my_text_field.dart';
 import 'bottom_button_row.dart';
+import 'audio_recorder.dart';
 
-/// 마진 정의
-/// UI를 보여줌
 void main() {
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -22,38 +21,56 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class MyWidget extends StatelessWidget {
-  const MyWidget({super.key});
+class MyWidget extends StatefulWidget {
+  const MyWidget({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {  
-    final micTopMargin = MediaQuery.of(context).size.height * 0.03; // 화면 높이의 3%를 마진으로 설정
-    final textFieldTopMargin =
-        MediaQuery.of(context).size.height * 0.03; // 화면 높이의 3%를 마진으로 설정
-    final textFieldSideMargin =
-        MediaQuery.of(context).size.width * 0.05; // 화면 너비의 5%를 마진으로 설정
-    final textFieldMaxHeight =
-        MediaQuery.of(context).size.height * 0.4; // 화면 높이의 45%를 최대 높이로 설정
-    final buttonRowSideMargin =
-        MediaQuery.of(context).size.width * 0.05; // 화면 너비의 5%를 마진으로 설정
+  MyWidgetState createState() => MyWidgetState();
+}
+
+class MyWidgetState extends State<MyWidget> {
+  late final AudioRecorder audioRecorder; // AudioRecorder 인스턴스 선언
+
+  @override
+  void initState() {
+    super.initState();
+    audioRecorder = AudioRecorder(); // AudioRecorder 초기화
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final micTopMargin = MediaQuery.of(context).size.height * 0.03;
+    final textFieldTopMargin = MediaQuery.of(context).size.height * 0.03;
+    final textFieldSideMargin = MediaQuery.of(context).size.width * 0.05;
+    final textFieldMaxHeight = MediaQuery.of(context).size.height * 0.4;
+    final buttonRowSideMargin = MediaQuery.of(context).size.width * 0.05;
 
     return Scaffold(
-      // 앱바
       appBar: MyAppBar(),
       backgroundColor: Colors.white,
       body: Column(
         mainAxisAlignment: MainAxisAlignment.start,
         children: <Widget>[
-          MicIcon(micTopMargin: micTopMargin),      // 마이크 아이콘
-          DescriptionText(),                        // 설명 텍스트
-          MyTextField(                              // 텍스트 필드
+          MicIcon(
+            micTopMargin: micTopMargin,
+            audioRecorder: audioRecorder, // AudioRecorder 인스턴스 전달
+            isRecording: audioRecorder.isRecording, // isRecording 전달
+          ),
+          DescriptionText(),
+          MyTextField(
             textFieldTopMargin: textFieldTopMargin,
             textFieldSideMargin: textFieldSideMargin,
             textFieldMaxHeight: textFieldMaxHeight,
-          ),                         // 텍스트 필드
-          BottomButtonRow(buttonRowSideMargin: buttonRowSideMargin) // 하단 버튼 행
+            receivedText: audioRecorder.receivedText, // receivedText 전달
+          ),
+          BottomButtonRow(buttonRowSideMargin: buttonRowSideMargin)
         ],
       ),
     );
+  }
+  @override
+  void dispose() {
+    audioRecorder.dispose();
+    super.dispose();
   }
 }
