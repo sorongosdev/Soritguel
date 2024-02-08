@@ -1,14 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'my_app_bar.dart';
 import 'mic_icon.dart';
 import 'description_text.dart';
 import 'my_text_field.dart';
 import 'bottom_button_row.dart';
 import 'audio_recorder.dart';
+import 'text_size_model.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (context) => TextSizeModel(),
+      child: MyApp(),
+    ),
+  );
 }
+
 
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);

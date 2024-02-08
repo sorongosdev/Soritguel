@@ -1,18 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
-/**하단 버튼 행*/
-class BottomButtonRow extends StatelessWidget{
+import 'text_size_model.dart';
+
+///하단 버튼 행
+class BottomButtonRow extends StatefulWidget {
   final double buttonRowSideMargin;
 
   const BottomButtonRow({
     Key? key,
-    required this.buttonRowSideMargin
+    required this.buttonRowSideMargin,
   }) : super(key: key);
 
   @override
+  _BottomButtonRowState createState() => _BottomButtonRowState();
+}
+
+class _BottomButtonRowState extends State<BottomButtonRow> {
+  @override
   Widget build(BuildContext context) {
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: buttonRowSideMargin),
+      margin: EdgeInsets.symmetric(horizontal: widget.buttonRowSideMargin),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: <Widget>[
@@ -24,13 +32,17 @@ class BottomButtonRow extends StatelessWidget{
           ),
           Expanded(
             child: ElevatedButton(
-              onPressed: () {},
+              onPressed: () {
+                Provider.of<TextSizeModel>(context, listen: false).increaseTextSize(); // 텍스트 크기 증가
+              },
               child: const Text('크게'),
             ),
           ),
           Expanded(
             child: ElevatedButton(
-              onPressed: () {},
+              onPressed: () {
+                Provider.of<TextSizeModel>(context, listen: false).decreaseTextSize(); // 텍스트 크기 감소
+              },
               child: const Text('작게'),
             ),
           ),
@@ -38,5 +50,5 @@ class BottomButtonRow extends StatelessWidget{
       ),
     );
   }
-
 }
+

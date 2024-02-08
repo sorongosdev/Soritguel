@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:provider/provider.dart';
+import 'text_size_model.dart';
 
 /// 텍스트필드, 상태가 변경되기 때문에 stateful 사용
 class MyTextField extends StatefulWidget {
@@ -17,12 +19,13 @@ class MyTextField extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  _MyTextFieldState createState() => _MyTextFieldState();
+  MyTextFieldState createState() => MyTextFieldState();
 }
 
 /// StatefulWidget의 상태를 관리하는 데 사용되는 state 클래스
-class _MyTextFieldState extends State<MyTextField> {
+class MyTextFieldState extends State<MyTextField> {
   late TextEditingController _controller;
+  double _textSize = 14.0; // 텍스트 크기 변수 추가
 
   @override
   void initState() {
@@ -49,6 +52,20 @@ class _MyTextFieldState extends State<MyTextField> {
     _controller.text = text; // 텍스트 필드 업데이트
   }
 
+  // 텍스트 크기 증가시키는 함수
+  void increaseTextSize() {
+    setState(() {
+      _textSize += 2.0;
+    });
+  }
+
+  // 텍스트 크기 감소시키는 함수
+  void decreaseTextSize() {
+    setState(() {
+      _textSize -= 2.0;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -62,14 +79,21 @@ class _MyTextFieldState extends State<MyTextField> {
       ),
       height: widget.textFieldMaxHeight,
       child: SingleChildScrollView(
-        child: TextField(
-          maxLines: null,
-          controller: _controller,
-          decoration: InputDecoration(
-            border: InputBorder.none,
-          ),
+        child: Consumer<TextSizeModel>( // Consumer를 사용하여 TextSizeModel에 접근
+          builder: (context, textSizeModel, child) {
+            return TextField(
+              maxLines: null,
+              controller: _controller,
+              style: TextStyle(fontSize: textSizeModel.textSize), // 텍스트 크기를 TextSizeModel에서 가져옴
+              decoration: InputDecoration(
+                border: InputBorder.none,
+              ),
+            );
+          },
         ),
       ),
     );
   }
+
+
 }
