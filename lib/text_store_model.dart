@@ -5,22 +5,16 @@ import 'dart:io';
 
 class TextStoreModel with ChangeNotifier {
 
+  // 텍스트필드의 텍스트를 읽어오기 위한 컨트롤러
   late TextEditingController _controller;
 
+  /// 텍스트필드의 텍스트를 읽어오기 위한 컨트롤러 지정
   void setController(TextEditingController controller) {
     _controller = controller;
     notifyListeners();
   }
 
-  // String _text = '';
-  //
-  // /// my_text_field에서 텍스트를 지정
-  // void setText(String text) {
-  //   _text = text;
-  //   notifyListeners();
-  // }
-
-  /// 앱바에서 저장버튼을 누르면 setText로 지정된 텍스트를 텍스트파일에 저장
+  /// 앱바에서 저장버튼을 누르면 텍스트필드의 텍스트를 텍스트파일에 저장
   Future<void> saveText() async {
 
     Directory? directory;
@@ -40,8 +34,8 @@ class TextStoreModel with ChangeNotifier {
     var formatter = DateFormat('yyyyMMdd_HHmmss');
     String formattedTime = formatter.format(now);
 
-    // filePath에 _text 저장
-    final filePath = '${directory!.path}/$formattedTime';
+    // filePath에 txt  저장
+    final filePath = '${directory!.path}/$formattedTime.txt';
     final file = File(filePath);
     await file.writeAsString(text);
   }
