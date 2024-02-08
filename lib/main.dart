@@ -7,16 +7,23 @@ import 'my_text_field.dart';
 import 'bottom_button_row.dart';
 import 'audio_recorder.dart';
 import 'text_size_model.dart';
+import 'text_store_model.dart';
 
 void main() {
   runApp(
-    ChangeNotifierProvider(
-      create: (context) => TextSizeModel(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (context) => TextSizeModel(),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => TextStoreModel(),
+        ),
+      ],
       child: MyApp(),
     ),
   );
 }
-
 
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);

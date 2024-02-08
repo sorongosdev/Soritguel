@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_project/text_store_model.dart';
 import 'package:provider/provider.dart';
 import 'text_size_model.dart';
 
@@ -32,6 +33,7 @@ class MyTextFieldState extends State<MyTextField> {
     super.initState();
     // 텍스트를 변경하는 컨트롤러 변수 설정
     _controller = TextEditingController(text: widget.receivedText.value.join('\n'));
+    Provider.of<TextStoreModel>(context, listen: false).setController(_controller);
     // 텍스트를 업데이트하는 리스너 추가
     widget.receivedText.addListener(_updateText);
   }
@@ -65,6 +67,12 @@ class MyTextFieldState extends State<MyTextField> {
       _textSize -= 2.0;
     });
   }
+  //
+  // void saveText() {
+  //   String text = _controller.text;
+  //   Provider.of<TextStoreModel>(context, listen: false).setText(text);
+  //   Provider.of<TextStoreModel>(context, listen: false).saveText();
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -79,8 +87,8 @@ class MyTextFieldState extends State<MyTextField> {
       ),
       height: widget.textFieldMaxHeight,
       child: SingleChildScrollView(
-        child: Consumer<TextSizeModel>( // Consumer를 사용하여 TextSizeModel에 접근
-          builder: (context, textSizeModel, child) {
+        child: Consumer2<TextSizeModel,TextStoreModel>( // Consumer를 사용하여 TextSizeModel에 접근
+          builder: (context, textSizeModel, textStoreModel, child) {
             return TextField(
               maxLines: null,
               controller: _controller,
