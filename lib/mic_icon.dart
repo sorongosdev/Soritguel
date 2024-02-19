@@ -1,4 +1,4 @@
-// mic_icon.dart
+/// mic_icon.dart
 import 'package:flutter/material.dart';
 import 'audio_recorder.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -26,25 +26,21 @@ class _MicIconState extends State<MicIcon> {
   void _toggleRecording() async {
     if (widget.isRecording.value) { // 수정
       await widget.audioRecorder.stopRecording();
-      widget.isRecording.value = false; // 수정
     } else {
       bool permissionGranted = await requestPermissions();
       if (permissionGranted) {
         await widget.audioRecorder.startRecording();
-        widget.isRecording.value = true; // 수정
       }
     }
-    setState(() {});
   }
 
   ///마이크 권한 요청
   Future<bool> requestPermissions() async {
     //마이크 권한 요청
     PermissionStatus status = await Permission.microphone.request();
-    print('Permission status: $status');
 
     //권한이 있는 경우
-    if(status.isGranted || status.isPermanentlyDenied){
+    if(status.isGranted){
       return Future.value(true);
     } //권한이 없는 경우
     else{
@@ -76,7 +72,6 @@ class _MicIconState extends State<MicIcon> {
       if (goToSettings) {
         openAppSettings();
       }
-
       return Future.value(false);
     }
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
@@ -38,5 +39,12 @@ class TextStoreModel with ChangeNotifier {
     final filePath = '${directory!.path}/$formattedTime.txt';
     final file = File(filePath);
     await file.writeAsString(text);
+
+    // 저장에 성공하면 토스트 메시지를 띄움
+    Fluttertoast.showToast(
+      msg: "텍스트 저장 성공!",
+      toastLength: Toast.LENGTH_SHORT,
+      gravity: ToastGravity.BOTTOM,
+    );
   }
 }

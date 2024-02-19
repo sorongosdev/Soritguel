@@ -26,7 +26,6 @@ class MyTextField extends StatefulWidget {
 /// StatefulWidget의 상태를 관리하는 데 사용되는 state 클래스
 class MyTextFieldState extends State<MyTextField> {
   late TextEditingController _controller;
-  double _textSize = 14.0; // 텍스트 크기 변수 추가
 
   @override
   void initState() {
@@ -54,26 +53,6 @@ class MyTextFieldState extends State<MyTextField> {
     _controller.text = text; // 텍스트 필드 업데이트
   }
 
-  // 텍스트 크기 증가시키는 함수
-  void increaseTextSize() {
-    setState(() {
-      _textSize += 2.0;
-    });
-  }
-
-  // 텍스트 크기 감소시키는 함수
-  void decreaseTextSize() {
-    setState(() {
-      _textSize -= 2.0;
-    });
-  }
-  //
-  // void saveText() {
-  //   String text = _controller.text;
-  //   Provider.of<TextStoreModel>(context, listen: false).setText(text);
-  //   Provider.of<TextStoreModel>(context, listen: false).saveText();
-  // }
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -91,7 +70,7 @@ class MyTextFieldState extends State<MyTextField> {
           builder: (context, textSizeModel, textStoreModel, child) {
             return TextField(
               maxLines: null,
-              controller: _controller,
+              controller: _controller, // 컨트롤러 추가
               style: TextStyle(fontSize: textSizeModel.textSize), // 텍스트 크기를 TextSizeModel에서 가져옴
               decoration: InputDecoration(
                 border: InputBorder.none,
