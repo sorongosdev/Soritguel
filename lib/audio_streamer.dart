@@ -110,6 +110,7 @@ class mAudioStreamer {
             .difference(lastSpokeAt!)
             .inSeconds >= 3) {
       stopRecording();
+      Fluttertoast.showToast(msg: "침묵이 감지되었습니다.");
       print('Stopped recording due to silence.');
     }
 
@@ -157,7 +158,7 @@ class mAudioStreamer {
     int sampleRate = 22100;
     int numSamples = pcmData.length;
     int numChannels = 1;
-    int sampleSize = 2; // 16 bits
+    int sampleSize = 2; // 16 bits#########
 
     int byteRate = sampleRate * numChannels * sampleSize;
 
