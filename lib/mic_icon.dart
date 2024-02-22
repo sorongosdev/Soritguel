@@ -1,18 +1,19 @@
 /// mic_icon.dart
 import 'package:flutter/material.dart';
-import 'audio_recorder.dart';
+// import 'audio_recorder.dart';
+import 'audio_streamer.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 /// 마이크 아이콘, 녹음 시작/중지 시 아이콘이 변경되어야하므로 Stateful 사용
 class MicIcon extends StatefulWidget {
   final double micTopMargin;
-  final AudioRecorder audioRecorder; // AudioRecorder 추가
+  final mAudioStreamer audioStreamer; // AudioRecorder 추가
   final ValueNotifier<bool> isRecording; // 변경
 
   const MicIcon({
     Key? key,
     required this.micTopMargin,
-    required this.audioRecorder, // 오디오 객체
+    required this.audioStreamer, // 오디오 객체
     required this.isRecording, // 마이크 아이콘 상태 변경을 위해 녹음중인지 판단하는 변수 필요
 
   }) : super(key: key);
@@ -25,11 +26,11 @@ class _MicIconState extends State<MicIcon> {
   /// 녹음중인지 관찰하고, 마이크 아이콘의 상태를 변경
   void _toggleRecording() async {
     if (widget.isRecording.value) { // 수정
-      await widget.audioRecorder.stopRecording();
+      await widget.audioStreamer.stopRecording();
     } else {
       bool permissionGranted = await requestPermissions();
       if (permissionGranted) {
-        await widget.audioRecorder.startRecording();
+        await widget.audioStreamer.startRecording();
       }
     }
   }

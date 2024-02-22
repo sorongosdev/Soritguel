@@ -50,7 +50,7 @@ class MyTextFieldState extends State<MyTextField> {
   void _updateText() {
     List<String> lines = widget.receivedText.value; // 텍스트 리스트 받아오기
     String text = lines.join("\n"); // 줄 바꿈 문자로 각 줄을 합치기
-    _controller.text = text; // 텍스트 필드 업데이트
+    _controller.text = '${_controller.text} $text'; // 텍스트 필드 업데이트
   }
 
   @override
