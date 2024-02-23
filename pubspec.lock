@@ -12,9 +12,10 @@ packages:
   audio_streamer:
     dependency: "direct main"
     description:
-      path: audio_streamer
-      relative: true
-    source: path
+      name: audio_streamer
+      sha256: ddf5f56d3866a9faa466db96c3c003ec4a5933c5bb107135f6712c9212aa4012
+      url: "https://pub.dev"
+    source: hosted
     version: "4.1.1"
   boolean_selector:
     dependency: transitive

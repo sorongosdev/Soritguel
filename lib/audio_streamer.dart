@@ -40,7 +40,7 @@ class mAudioStreamer {
       print(message);
 
       // 서버로부터 메시지를 받아 저장
-      receivedText.value = List.empty();
+      receivedText.value = List.empty(); // 실시간으로 받아오고 있기 때문에, 받아올 때마다 비워주어야함.
       receivedText.value = List.from(receivedText.value)..add(message);
     });
   }
