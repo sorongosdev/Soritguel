@@ -6,7 +6,8 @@ import 'mic_icon.dart';
 import 'description_text.dart';
 import 'my_text_field.dart';
 import 'bottom_button_row.dart';
-import 'audio_recorder.dart';
+// import 'audio_recorder.dart';
+import 'audio_streamer.dart';
 import 'text_size_model.dart';
 import 'text_store_model.dart';
 
@@ -45,12 +46,12 @@ class MyWidget extends StatefulWidget {
 }
 
 class MyWidgetState extends State<MyWidget> {
-  late final AudioRecorder audioRecorder; // AudioRecorder 인스턴스 선언
+  late final mAudioStreamer audioStreamer; // audioStreamer 인스턴스 선언
 
   @override
   void initState() {
     super.initState();
-    audioRecorder = AudioRecorder(); // AudioRecorder 초기화
+    audioStreamer = mAudioStreamer(); // audioStreamer 초기화
   }
 
   @override
@@ -69,24 +70,24 @@ class MyWidgetState extends State<MyWidget> {
         children: <Widget>[
           MicIcon(
             micTopMargin: micTopMargin,
-            audioRecorder: audioRecorder, // AudioRecorder 인스턴스 전달
-            isRecording: audioRecorder.isRecording, // isRecording 전달
+            audioStreamer: audioStreamer, // audioStreamer 인스턴스 전달
+            isRecording: audioStreamer.isRecording, // isRecording 전달
           ),
           DescriptionText(),
           MyTextField(
             textFieldTopMargin: textFieldTopMargin,
             textFieldSideMargin: textFieldSideMargin,
             textFieldMaxHeight: textFieldMaxHeight,
-            receivedText: audioRecorder.receivedText, // receivedText 전달
+            receivedText: audioStreamer.receivedText, // receivedText 전달
           ),
           BottomButtonRow(buttonRowSideMargin: buttonRowSideMargin)
         ],
       ),
     );
   }
-  @override
-  void dispose() {
-    audioRecorder.dispose();
-    super.dispose();
-  }
+  // @override
+  // void dispose() {
+  //   audioStreamer.dispose();
+  //   super.dispose();
+  // }
 }
