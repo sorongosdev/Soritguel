@@ -1,4 +1,5 @@
 /// audio_streamer.dart
+import 'dart:convert';
 import 'dart:math';
 import 'dart:async';
 
@@ -37,7 +38,12 @@ class mAudioStreamer {
     _init();
     receivePort.listen((message) { //서버로부터 메시지를 받음
 
-      print(message);
+      print("msg : $message");
+      // 모든 데이터를 받으면 웹소켓 채널을 닫음
+      if (message == "END_OF_DATA") { // 서버가 모든 데이터를 받았다는 메시지를 받으면
+        channel?.sink.close(); // 웹소켓 채널 닫음
+        receivedText.value = List.empty(); // 녹음이 중지되면 서버에서 받아오기 위해 사용했던 변수를 비워줌
+      }
 
       // 서버로부터 메시지를 받아 저장
       receivedText.value = List.empty(); // 실시간으로 받아오고 있기 때문에, 받아올 때마다 비워주어야함.
@@ -70,13 +76,17 @@ class mAudioStreamer {
 
   /// 오디오 샘플링을 멈추고 변수를 초기화
   Future<void> stopRecording() async {
+    // 일정 버퍼 사이즈가 안되었어도 녹음이 중지됐으므로 나머지 오디오를 전송
+    if (audio.isNotEmpty) {
+      sendAudio(isFinal: true);
+    }
+
     audioSubscription?.cancel();
-    audio = []; // 오디오 데이터
+    audio.clear(); // 오디오 데이터
     sampleRate = null; // 샘플링율
     lastSpokeAt = null;
-    channel?.sink.close(); // 웹소켓 채널 닫음
     isRecording.value = false;
-    receivedText.value = List.empty(); // 녹음이 중지되면 서버에서 받아오기 위해 사용했던 변수를 비워줌
+
   }
 
   /// 권한이 허용됐는지 체크
@@ -116,41 +126,53 @@ class mAudioStreamer {
 
     // 일정 버퍼 사이즈를 넘어가면 서버에 wav 파일을 전송
     if (audio.length >= 22100 * 3) {
-      // 원시 오디오 데이터인 PCM을 wav로 변환
-      var wavData = transformToWav(audio);
-
-      // 웹소켓을 통해 wav 전송
-      Isolate.spawn(sendOverWebSocket, {
-        'wavData': wavData,
-        'sendPort': receivePort.sendPort,
-      });
-
-      // 버퍼를 비워줌
-      audio = [];
+      sendAudio(isFinal: audio.length < 22100 * 3);
     }
 
-    latestBuffer = buffer;
+    // latestBuffer = buffer;
+  }
+
+  void sendAudio({required bool isFinal}) {
+    // 원시 오디오 데이터인 PCM을 wav로 변환
+    var wavData = transformToWav(audio);
+
+    // 웹소켓을 통해 wav 전송
+    Isolate.spawn(sendOverWebSocket, {
+      'wavData': wavData,
+      'sendPort': receivePort.sendPort,
+      'isFinal': isFinal, // 마지막 데이터인지 나타내는 변수 추가
+    });
+
+    // 버퍼를 비워줌
+    audio.clear();
   }
 
   ///웹소켓 통신으로 wav를 전송하는 함수
   static void sendOverWebSocket(Map<String, dynamic> args) async {
     final wavData = args['wavData'];
     final sendPort = args['sendPort'];
+    final isFinal = args['isFinal'];
 
     //채널 설정
     final channel = IOWebSocketChannel.connect('ws://192.168.1.101:8080');
     // final channel = IOWebSocketChannel.connect('wss://www.voiceai.co.kr:8889/client/ws/flutter');
 
     // stream에 데이터를 추가
-    channel.sink.add(wavData);
+    // channel.sink.add(wavData);
+    var base64WavData = base64Encode(wavData);
+
+    // stream에 데이터를 추가
+    channel.sink.add(jsonEncode({
+      'wavData': base64WavData,
+      'isFinal': isFinal,
+    }));
 
     // 서버로부터의 응답을 받아 메인 Isolate로 전송
     channel.stream.listen((message) {
       sendPort.send(message);
     });
-
     //채널을 닫아줌
-    await channel.sink.close();
+    // await channel.sink.close();
   }
 
   /// 오디오 PCM을 wav로 바꾸는 함수
