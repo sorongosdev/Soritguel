@@ -65,22 +65,36 @@ class MyTextFieldState extends State<MyTextField> {
         borderRadius: BorderRadius.circular(5.0),
       ),
       height: widget.textFieldMaxHeight,
-      child: SingleChildScrollView(
-        child: Consumer2<TextSizeModel,TextStoreModel>( // Consumer를 사용하여 TextSizeModel에 접근
-          builder: (context, textSizeModel, textStoreModel, child) {
-            return TextField(
-              maxLines: null,
-              controller: _controller, // 컨트롤러 추가
-              style: TextStyle(fontSize: textSizeModel.textSize), // 텍스트 크기를 TextSizeModel에서 가져옴
-              decoration: InputDecoration(
-                border: InputBorder.none,
-              ),
-            );
-          },
-        ),
+      child: Stack(
+        children: [
+          SingleChildScrollView(
+            child: Consumer2<TextSizeModel,TextStoreModel>(
+              builder: (context, textSizeModel, textStoreModel, child) {
+                return TextField(
+                  maxLines: null,
+                  controller: _controller,
+                  style: TextStyle(fontSize: textSizeModel.textSize),
+                  decoration: InputDecoration(
+                    border: InputBorder.none,
+                  ),
+                );
+              },
+            ),
+          ),
+          Positioned(
+            right: 0,
+            bottom: 0,
+            child: IconButton(
+              icon: Icon(Icons.delete_forever),
+              onPressed: () => _controller.clear(),
+            ),
+          ),
+        ],
       ),
     );
   }
+
+
 
 
 }
