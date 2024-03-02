@@ -256,7 +256,6 @@ class mAudioStreamer {
       IosDeviceInfo iosInfo = await deviceInfo.iosInfo;
       if (!(iosInfo.isPhysicalDevice)) {
         // ios 에뮬레이터일 경우
-        print("ios emulator");
         sampleRate = 44100;
       } else {
         sampleRate ??= await _audioStreamer.actualSampleRate;
