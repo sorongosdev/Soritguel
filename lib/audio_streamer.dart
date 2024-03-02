@@ -68,17 +68,6 @@ class mAudioStreamer {
     // 샘플링율 - 안드로이드에서만 동작
     _audioStreamer.sampleRate = 22100;
 
-    // ios 에뮬레이터에서는 샘플링율으로 44100을 사용
-    // DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
-    // if (Platform.isAndroid) {
-    //   AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
-    //   print('Running on android ${androidInfo.isPhysicalDevice ? 'physical device' : 'emulator'}');
-    // } else if (Platform.isIOS) {
-    //   IosDeviceInfo iosInfo = await deviceInfo.iosInfo;
-    //   print('Running on ios ${iosInfo.isPhysicalDevice ? 'physical device' : 'emulator'}');
-    //   sampleRate = 44100;
-    // }
-
     // 오디오 스트림 시작
     audioSubscription =
         _audioStreamer.audioStream.listen(onAudio, onError: handleError);
@@ -112,10 +101,6 @@ class mAudioStreamer {
   /// 오디오 샘플링 콜백
   void onAudio(List<double> buffer) async {
     audio.addAll(buffer);
-
-    // // 샘플링율 자동 감지
-    // sampleRate ??= await _audioStreamer.actualSampleRate;
-    // sampleRate = 44100; // ios emulator
 
     // 샘플링율 감지
     getSampleRate();
