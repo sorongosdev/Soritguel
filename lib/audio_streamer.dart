@@ -11,6 +11,8 @@ import 'package:permission_handler/permission_handler.dart';
 import 'dart:typed_data';
 import 'package:web_socket_channel/io.dart';
 import 'dart:isolate';
+import 'package:device_info_plus/device_info_plus.dart';
+import 'dart:io' show Platform;
 
 class mAudioStreamer {
   ///proivder 관련 변수
@@ -20,13 +22,13 @@ class mAudioStreamer {
       []); // 서버에서 받은 변수, 여러 줄일 수 있기 때문에 List<String> 타입
 
   bool isSpeaking = false; // 말하고 있는 중인지
+  List<bool> isSpeakingArr = [false, false, false];
 
   ///오디오 스트리머 세팅 관련 변수들
   dynamic _audioStreamer; // 오디오스트리머 객체
 
   int? sampleRate; // 샘플링율
   List<double> audio = [];
-  List<double> speechBuffer = []; // 말하는 중일 때만 저장하는 버퍼
   StreamSubscription<List<double>>? audioSubscription;
   DateTime? lastSpokeAt; //마지막 말한 시점의 시간
 
@@ -45,6 +47,7 @@ class mAudioStreamer {
       } else {
         // 서버로부터 메시지를 받아 저장
         receivedText.value = List.empty(); // 실시간으로 받아오고 있기 때문에, 받아올 때마다 비워주어야함.
+        print("msg: $message");
         receivedText.value = List.from(receivedText.value)..add(message);
       }
     });
@@ -64,6 +67,17 @@ class mAudioStreamer {
 
     // 샘플링율 - 안드로이드에서만 동작
     _audioStreamer.sampleRate = 22100;
+
+    // ios 에뮬레이터에서는 샘플링율으로 44100을 사용
+    // DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
+    // if (Platform.isAndroid) {
+    //   AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
+    //   print('Running on android ${androidInfo.isPhysicalDevice ? 'physical device' : 'emulator'}');
+    // } else if (Platform.isIOS) {
+    //   IosDeviceInfo iosInfo = await deviceInfo.iosInfo;
+    //   print('Running on ios ${iosInfo.isPhysicalDevice ? 'physical device' : 'emulator'}');
+    //   sampleRate = 44100;
+    // }
 
     // 오디오 스트림 시작
     audioSubscription =
@@ -99,12 +113,33 @@ class mAudioStreamer {
   void onAudio(List<double> buffer) async {
     audio.addAll(buffer);
 
-    // 샘플링율 자동 감지
-    sampleRate ??= await _audioStreamer.actualSampleRate;
-    print(sampleRate);
+    // // 샘플링율 자동 감지
+    // sampleRate ??= await _audioStreamer.actualSampleRate;
+    // sampleRate = 44100; // ios emulator
+
+    // 샘플링율 감지
+    getSampleRate();
 
     double threshold = 0.1; // 침묵 기준 진폭
     double maxAmp = buffer.reduce(max);
+
+    // isSpeaking 업데이트
+    updateSpeakingStatus(threshold, maxAmp);
+
+    print("isSpeaking: $isSpeaking");
+
+    // 3초 침묵 감지시 녹음 중지
+    checkSilence();
+
+    // 문장 감지 후 전송
+    sendBySentence();
+  }
+
+  /// 음성의 진폭에 따라 isSpeaking, isSpeakingArr 업데이트해주는 메소드
+  void updateSpeakingStatus(double threshold, double maxAmp) {
+    // isSpeaking의 현재 상태 업데이트를 위해 리스트 shift
+    isSpeakingArr[0] = isSpeakingArr[1]; // 인덱스1 값을 0으로 옮겨줌
+    isSpeakingArr[1] = isSpeakingArr[2]; // 인덱스2 값을 1으로 옮겨줌
 
     if (maxAmp > threshold && !isSpeaking) {
       // 말하는 중인지 판단
@@ -114,9 +149,11 @@ class mAudioStreamer {
       isSpeaking = false;
     }
 
-    print("isSpeaking: $isSpeaking");
+    isSpeakingArr[2] = isSpeaking; // 현재 isSpeaking 상태를 인덱스2에 저장
+  }
 
-    // 3초 침묵 감지시 녹음 중지
+  ///침묵을 감지하는 함수
+  void checkSilence() {
     if (!isSpeaking &&
         lastSpokeAt != null &&
         DateTime.now().difference(lastSpokeAt!).inSeconds >= 3) {
@@ -124,31 +161,18 @@ class mAudioStreamer {
       Fluttertoast.showToast(msg: "침묵이 감지되었습니다.");
       print('Stopped recording due to silence.');
     }
-
-    //TODO : 말마디마다 전송
-    //1초 이상 쉬면 전송하고, 이미 전송을 했을 때는 전송을 안 함.
-    //TODO : 6400/22100 = 0.29, 9600/24000 = 0.4
-    if (!isSpeaking &&
-        lastSpokeAt != null &&
-        DateTime.now().difference(lastSpokeAt!).inSeconds >= 1 &&
-        audio.length>6400) {
-      sendAudio(isFinal: false);
-    }
-
-    // if (!isSpeaking &&
-    //     lastSpokeAt != null &&
-    //     DateTime.now().difference(lastSpokeAt!).inSeconds >= 1) {
-    //   sendAudio(isFinal: false);
-    // }
-
-    // 일정 버퍼 사이즈를 넘어가면 서버에 wav 파일을 전송
-    // if (audio.length >= 22100 * 3) {
-    //   sendAudio(isFinal: false);
-    // }
   }
 
+  /// 문장 단위로 전송
+  void sendBySentence() {
+    if (isSpeakingArr[0] && !isSpeakingArr[1] && !isSpeakingArr[2]) {
+      sendAudio(isFinal: false);
+    }
+  }
+
+  ///웹소켓 통신으로 실제로 wav를 isolate로 전송
   void sendAudio({required bool isFinal}) {
-    print("send Audio / isfinal $isFinal / audio length: ${audio.length}");
+    print("send Audio / isfinal $isFinal");
     // 원시 오디오 데이터인 PCM을 wav로 변환
     var wavData = transformToWav(audio);
 
@@ -163,7 +187,7 @@ class mAudioStreamer {
     audio.clear();
   }
 
-  ///웹소켓 통신으로 wav를 전송하는 함수
+  ///웹소켓 통신 정보를 stream에 추가하고, 서버로부터 응답을 받는 부분
   static void sendOverWebSocket(Map<String, dynamic> args) async {
     final wavData = args['wavData'];
     final sendPort = args['sendPort'];
@@ -171,7 +195,8 @@ class mAudioStreamer {
 
     //채널 설정
     // final channel = IOWebSocketChannel.connect('ws://192.168.1.101:8080');
-    final channel = IOWebSocketChannel.connect('wss://www.voiceai.co.kr:8889/client/ws/flutter');
+    final channel = IOWebSocketChannel.connect(
+        'wss://www.voiceai.co.kr:8889/client/ws/flutter');
 
     // stream에 데이터를 추가
     // channel.sink.add(wavData);
@@ -191,12 +216,13 @@ class mAudioStreamer {
 
   /// 오디오 PCM을 wav로 바꾸는 함수
   Uint8List transformToWav(List<double> pcmData) {
-    int sampleRate = 22100;
+    // int sampleRate = 22100;
+    print("transformToWav $sampleRate");
     int numSamples = pcmData.length;
     int numChannels = 1;
     int sampleSize = 2; // 16 bits#########
 
-    int byteRate = sampleRate * numChannels * sampleSize;
+    int byteRate = sampleRate! * numChannels * sampleSize;
 
     var header = ByteData(44);
     var bData = ByteData(numSamples * sampleSize);
@@ -217,7 +243,7 @@ class mAudioStreamer {
     header.setUint32(16, 16, Endian.little); // SubChunk1Size
     header.setUint16(20, 1, Endian.little); // AudioFormat
     header.setUint16(22, numChannels, Endian.little);
-    header.setUint32(24, sampleRate, Endian.little);
+    header.setUint32(24, sampleRate!, Endian.little);
     header.setUint32(28, byteRate, Endian.little);
     header.setUint16(32, numChannels * sampleSize, Endian.little); // BlockAlign
     header.setUint16(34, 8 * sampleSize, Endian.little); // BitsPerSample
@@ -237,5 +263,22 @@ class mAudioStreamer {
   void handleError(Object error) {
     isRecording.value = false; //에러 발생시 녹음 중지
     print(error);
+  }
+
+  Future<void> getSampleRate() async {
+    DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
+    if (Platform.isIOS) {
+      IosDeviceInfo iosInfo = await deviceInfo.iosInfo;
+      if (!(iosInfo.isPhysicalDevice)) {
+        // ios 에뮬레이터일 경우
+        print("ios emulator");
+        sampleRate = 44100;
+      } else {
+        sampleRate ??= await _audioStreamer.actualSampleRate;
+      }
+    } else {
+      // 그 이외의 경우 샘플링율 자동 감지
+      sampleRate ??= await _audioStreamer.actualSampleRate;
+    }
   }
 }
