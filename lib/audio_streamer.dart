@@ -17,18 +17,23 @@ import 'dart:io' show Platform;
 class mAudioStreamer {
   ///proivder 관련 변수
   ValueNotifier<bool> isRecording =
-      ValueNotifier<bool>(false); // 오디오 객체를 공유하기 위함, 녹음 중인지에 관한 변수
+  ValueNotifier<bool>(false); // 오디오 객체를 공유하기 위함, 녹음 중인지에 관한 변수
   final ValueNotifier<List<String>> receivedText = ValueNotifier<List<String>>(
       []); // 서버에서 받은 변수, 여러 줄일 수 있기 때문에 List<String> 타입
 
   bool isSpeaking = false; // 말하고 있는 중인지
-  List<bool> isSpeakingArr = [false, false, false];
+  List<bool> isSpeakingArr = [false, false, false]; // isSpeaking 상태 저장
 
   ///오디오 스트리머 세팅 관련 변수들
   dynamic _audioStreamer; // 오디오스트리머 객체
 
   int? sampleRate; // 샘플링율
+  List<double> prevAudio = [];
+  List<double> pastAudio = [];
   List<double> audio = [];
+  bool isBufferUpdated = false;
+  bool isFinal = false;
+
   StreamSubscription<List<double>>? audioSubscription;
   DateTime? lastSpokeAt; //마지막 말한 시점의 시간
 
@@ -42,13 +47,18 @@ class mAudioStreamer {
       // 모든 데이터를 받으면 웹소켓 채널을 닫음
       if (message == "END_OF_DATA") {
         // 서버가 모든 데이터를 받았다는 메시지를 받으면
+        print("EOD");
         channel?.sink.close(); // 웹소켓 채널 닫음
+        audio.clear(); // 오디오 데이터
+        prevAudio.clear();
+        isFinal = false;
         receivedText.value = List.empty(); // 녹음이 중지되면 서버에서 받아오기 위해 사용했던 변수를 비워줌
       } else {
         // 서버로부터 메시지를 받아 저장
         receivedText.value = List.empty(); // 실시간으로 받아오고 있기 때문에, 받아올 때마다 비워주어야함.
         print("msg: $message");
-        receivedText.value = List.from(receivedText.value)..add(message);
+        receivedText.value = List.from(receivedText.value)
+          ..add(message);
       }
     });
   }
@@ -66,7 +76,7 @@ class mAudioStreamer {
     }
 
     // 샘플링율 - 안드로이드에서만 동작
-    _audioStreamer.sampleRate = 22100;
+    _audioStreamer.sampleRate = 44100;
 
     // 오디오 스트림 시작
     audioSubscription =
@@ -81,13 +91,21 @@ class mAudioStreamer {
 
   /// 오디오 샘플링을 멈추고 변수를 초기화
   Future<void> stopRecording() async {
-    // 일정 버퍼 사이즈가 안되었어도 녹음이 중지됐으므로 나머지 오디오를 전송
-    if (audio.isNotEmpty) {
-      sendAudio(isFinal: true);
+
+    // 현재 오디오 의미 없을 때 이전 오디오만 전송
+    if (audio.length <= 6400 ||
+        (!isSpeakingArr[0] && !isSpeakingArr[1] && !isSpeakingArr[2])) {
+      print("useless current audio");
+      sendAudio(audioBuffer: prevAudio, isFinal: true);
+    }
+    // 현재 오디오 의미 있을 때 현재 오디오를 전송
+    else {
+      print("useful current audio");
+      sendAudio(audioBuffer: audio, isFinal: true);
     }
 
     audioSubscription?.cancel();
-    audio.clear(); // 오디오 데이터
+    isBufferUpdated = false;
     sampleRate = null; // 샘플링율
     lastSpokeAt = null;
     isRecording.value = false;
@@ -114,11 +132,26 @@ class mAudioStreamer {
     // isSpeaking 업데이트
     updateSpeakingStatus(threshold, maxAmp);
 
+    print("isSpeaking $isSpeaking");
+
     // 3초 침묵 감지시 녹음 중지
     checkSilence();
 
-    // 문장 감지 후 전송
-    sendBySentence();
+    // prevAudio를 보냄
+    if (isBufferUpdated) {
+      sendAudio(audioBuffer: pastAudio, isFinal: false);
+    }
+
+    // 현재 audio는 바로 보내지 않고 이전 상태에 저장
+    if (isSpeakingArr[0] && !isSpeakingArr[1] && !isSpeakingArr[2]) {
+      isBufferUpdated = true;
+      pastAudio = List.from(prevAudio);
+      prevAudio = List.from(audio);
+      // print("prevAudio and audio length ${prevAudio.length} ${audio.length}");
+      audio.clear();
+    } else {
+      isBufferUpdated = false;
+    }
   }
 
   /// 음성의 진폭에 따라 isSpeaking, isSpeakingArr 업데이트해주는 메소드
@@ -142,35 +175,34 @@ class mAudioStreamer {
   void checkSilence() {
     if (!isSpeaking &&
         lastSpokeAt != null &&
-        DateTime.now().difference(lastSpokeAt!).inSeconds >= 3) {
+        DateTime
+            .now()
+            .difference(lastSpokeAt!)
+            .inSeconds >= 3) {
       stopRecording();
       Fluttertoast.showToast(msg: "침묵이 감지되었습니다.");
       print('Stopped recording due to silence.');
     }
   }
 
-  /// 문장 단위로 전송
-  void sendBySentence() {
-    if (isSpeakingArr[0] && !isSpeakingArr[1] && !isSpeakingArr[2]) {
-      sendAudio(isFinal: false);
-    }
-  }
-
   ///웹소켓 통신으로 실제로 wav를 isolate로 전송
-  void sendAudio({required bool isFinal}) {
-    print("send Audio / isfinal $isFinal");
+  void sendAudio({required List<double> audioBuffer, required bool isFinal}) {
+    // print("send Audio / isfinal $isFinal / audioBuffer.length ${audioBuffer.length}");
     // 원시 오디오 데이터인 PCM을 wav로 변환
-    var wavData = transformToWav(audio);
+    var wavData = transformToWav(audioBuffer);
 
-    // 웹소켓을 통해 wav 전송
-    Isolate.spawn(sendOverWebSocket, {
-      'wavData': wavData,
-      'sendPort': receivePort.sendPort,
-      'isFinal': isFinal, // 마지막 데이터인지 나타내는 변수 추가
-    });
+    // print("audioBuffer.isEmpty ${audioBuffer.isEmpty}");
 
-    // 버퍼를 비워줌
-    audio.clear();
+    if (audioBuffer.isNotEmpty) {
+      print("send not empty Audio / audioBuffer.length ${audioBuffer
+          .length} / isFinal $isFinal");
+      // 웹소켓을 통해 wav 전송
+      Isolate.spawn(sendOverWebSocket, {
+        'wavData': wavData,
+        'sendPort': receivePort.sendPort,
+        'isFinal': isFinal, // 마지막 데이터인지 나타내는 변수 추가
+      });
+    }
   }
 
   ///웹소켓 통신 정보를 stream에 추가하고, 서버로부터 응답을 받는 부분
@@ -201,7 +233,7 @@ class mAudioStreamer {
   /// 오디오 PCM을 wav로 바꾸는 함수
   Uint8List transformToWav(List<double> pcmData) {
     // int sampleRate = 22100;
-    print("transformToWav $sampleRate");
+    // print("transformToWav $sampleRate");
     int numSamples = pcmData.length;
     int numChannels = 1;
     int sampleSize = 2; // 16 bits#########
@@ -262,7 +294,8 @@ class mAudioStreamer {
       }
     } else {
       // 그 이외의 경우 샘플링율 자동 감지
-      sampleRate ??= await _audioStreamer.actualSampleRate;
+      // sampleRate ??= await _audioStreamer.actualSampleRate;
+      sampleRate = 44100;
     }
   }
 }
