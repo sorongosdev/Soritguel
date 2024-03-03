@@ -72,8 +72,10 @@ class mAudioStreamer {
     audioSubscription =
         _audioStreamer.audioStream.listen(onAudio, onError: handleError);
 
-    lastSpokeAt = DateTime.now(); //마지막 말하는 중이었던 시간 업데이트
+    //마지막 말하는 중이었던 시간 업데이트
+    lastSpokeAt = DateTime.now();
 
+    // 녹음중 유무 변수를 업데이트
     isRecording.value = true;
   }
 
@@ -100,18 +102,17 @@ class mAudioStreamer {
 
   /// 오디오 샘플링 콜백
   void onAudio(List<double> buffer) async {
+    // 버퍼에 음성 데이터를 추가
     audio.addAll(buffer);
 
     // 샘플링율 감지
     getSampleRate();
 
     double threshold = 0.1; // 침묵 기준 진폭
-    double maxAmp = buffer.reduce(max);
+    double maxAmp = buffer.reduce(max); // 음성 진폭
 
     // isSpeaking 업데이트
     updateSpeakingStatus(threshold, maxAmp);
-
-    print("isSpeaking: $isSpeaking");
 
     // 3초 침묵 감지시 녹음 중지
     checkSilence();
@@ -180,11 +181,9 @@ class mAudioStreamer {
 
     //채널 설정
     // final channel = IOWebSocketChannel.connect('ws://192.168.1.101:8080');
-    final channel = IOWebSocketChannel.connect(
-        'wss://www.voiceai.co.kr:8889/client/ws/flutter');
+    final channel = IOWebSocketChannel.connect('wss://www.voiceai.co.kr:8889/client/ws/flutter');
 
-    // stream에 데이터를 추가
-    // channel.sink.add(wavData);
+    //wav 파일을 base64로 인코딩
     var base64WavData = base64Encode(wavData);
 
     // stream에 데이터를 추가
@@ -250,6 +249,7 @@ class mAudioStreamer {
     print(error);
   }
 
+  /// 샘플링율 감지
   Future<void> getSampleRate() async {
     DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
     if (Platform.isIOS) {
