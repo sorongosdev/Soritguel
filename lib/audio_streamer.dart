@@ -27,7 +27,7 @@ class mAudioStreamer {
   ///오디오 스트리머 세팅 관련 변수들
   dynamic _audioStreamer; // 오디오스트리머 객체
 
-  int? sampleRate; // 샘플링율
+  int sampleRate = 44100; // 샘플링율
   List<double> prevAudio = [];
   List<double> pastAudio = [];
   List<double> audio = [];
@@ -104,7 +104,6 @@ class mAudioStreamer {
 
     audioSubscription?.cancel();
     isBufferUpdated = false;
-    sampleRate = null; // 샘플링율
     lastSpokeAt = null;
     isRecording.value = false;
   }
@@ -120,9 +119,6 @@ class mAudioStreamer {
   void onAudio(List<double> buffer) async {
     // 버퍼에 음성 데이터를 추가
     audio.addAll(buffer);
-
-    // 샘플링율 감지
-    getSampleRate();
 
     double threshold = 0.1; // 침묵 기준 진폭
     double maxAmp = buffer.reduce(max); // 음성 진폭
@@ -235,7 +231,7 @@ class mAudioStreamer {
     int numChannels = 1;
     int sampleSize = 2; // 16 bits#########
 
-    int byteRate = sampleRate! * numChannels * sampleSize;
+    int byteRate = sampleRate * numChannels * sampleSize;
 
     var header = ByteData(44);
     var bData = ByteData(numSamples * sampleSize);
@@ -256,7 +252,7 @@ class mAudioStreamer {
     header.setUint32(16, 16, Endian.little); // SubChunk1Size
     header.setUint16(20, 1, Endian.little); // AudioFormat
     header.setUint16(22, numChannels, Endian.little);
-    header.setUint32(24, sampleRate!, Endian.little);
+    header.setUint32(24, sampleRate, Endian.little);
     header.setUint32(28, byteRate, Endian.little);
     header.setUint16(32, numChannels * sampleSize, Endian.little); // BlockAlign
     header.setUint16(34, 8 * sampleSize, Endian.little); // BitsPerSample
@@ -276,23 +272,5 @@ class mAudioStreamer {
   void handleError(Object error) {
     isRecording.value = false; //에러 발생시 녹음 중지
     print(error);
-  }
-
-  /// 샘플링율 감지
-  Future<void> getSampleRate() async {
-    DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
-    if (Platform.isIOS) {
-      IosDeviceInfo iosInfo = await deviceInfo.iosInfo;
-      if (!(iosInfo.isPhysicalDevice)) {
-        // ios 에뮬레이터 샘플링율 44100으로 설정
-        sampleRate = 44100;
-      } else {
-        // ios 실제 기기는 자동 감지
-        sampleRate ??= await _audioStreamer.actualSampleRate;
-      }
-    } else { // 안드로이드는 44100으로 설정
-      // sampleRate ??= await _audioStreamer.actualSampleRate;
-      sampleRate = 44100;
-    }
   }
 }
