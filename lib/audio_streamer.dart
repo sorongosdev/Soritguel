@@ -130,7 +130,7 @@ class mAudioStreamer {
     // isSpeaking 업데이트
     updateSpeakingStatus(threshold, maxAmp);
 
-    print("isSpeaking $isSpeaking");
+    // print("isSpeaking $isSpeaking");
 
     // 3초 침묵 감지시 녹음 중지
     checkSilence();
@@ -284,13 +284,13 @@ class mAudioStreamer {
     if (Platform.isIOS) {
       IosDeviceInfo iosInfo = await deviceInfo.iosInfo;
       if (!(iosInfo.isPhysicalDevice)) {
-        // ios 에뮬레이터일 경우
+        // ios 에뮬레이터 샘플링율 44100으로 설정
         sampleRate = 44100;
       } else {
+        // ios 실제 기기는 자동 감지
         sampleRate ??= await _audioStreamer.actualSampleRate;
       }
-    } else {
-      // 그 이외의 경우 샘플링율 자동 감지
+    } else { // 안드로이드는 44100으로 설정
       // sampleRate ??= await _audioStreamer.actualSampleRate;
       sampleRate = 44100;
     }
