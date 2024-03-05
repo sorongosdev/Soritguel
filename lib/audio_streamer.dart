@@ -17,7 +17,7 @@ import 'dart:io' show Platform;
 class mAudioStreamer {
   ///proivder 관련 변수
   ValueNotifier<bool> isRecording =
-  ValueNotifier<bool>(false); // 오디오 객체를 공유하기 위함, 녹음 중인지에 관한 변수
+      ValueNotifier<bool>(false); // 오디오 객체를 공유하기 위함, 녹음 중인지에 관한 변수
   final ValueNotifier<List<String>> receivedText = ValueNotifier<List<String>>(
       []); // 서버에서 받은 변수, 여러 줄일 수 있기 때문에 List<String> 타입
 
@@ -56,9 +56,8 @@ class mAudioStreamer {
       } else {
         // 서버로부터 메시지를 받아 저장
         receivedText.value = List.empty(); // 실시간으로 받아오고 있기 때문에, 받아올 때마다 비워주어야함.
-        print("msg: $message");
-        receivedText.value = List.from(receivedText.value)
-          ..add(message);
+        print("eod: msg $message");
+        receivedText.value = List.from(receivedText.value)..add(message);
       }
     });
   }
@@ -91,10 +90,8 @@ class mAudioStreamer {
 
   /// 오디오 샘플링을 멈추고 변수를 초기화
   Future<void> stopRecording() async {
-
     // 현재 오디오 의미 없을 때(1초보다 작은 크기) 이전 오디오만 전송
-    if (audio.length <= sampleRate! ||
-        (!isSpeakingArr[0] && !isSpeakingArr[1] && !isSpeakingArr[2])) {
+    if (!isSpeakingArr[0] && !isSpeakingArr[1] && !isSpeakingArr[2]) {
       print("eod: useless current audio. send only prev audio");
       sendAudio(audioBuffer: prevAudio, isFinal: true);
     }
@@ -179,10 +176,7 @@ class mAudioStreamer {
   void checkSilence() {
     if (!isSpeaking &&
         lastSpokeAt != null &&
-        DateTime
-            .now()
-            .difference(lastSpokeAt!)
-            .inSeconds >= 3) {
+        DateTime.now().difference(lastSpokeAt!).inSeconds >= 3) {
       stopRecording();
       Fluttertoast.showToast(msg: "침묵이 감지되었습니다.");
       print('Stopped recording due to silence.');
@@ -191,15 +185,15 @@ class mAudioStreamer {
 
   ///웹소켓 통신으로 실제로 wav를 isolate로 전송
   void sendAudio({required List<double> audioBuffer, required bool isFinal}) {
-    print("eod: send Audio / isfinal $isFinal / audioBuffer.length ${audioBuffer.length}");
+    print(
+        "eod: send Audio / isfinal $isFinal / audioBuffer.length ${audioBuffer.length}");
     // 원시 오디오 데이터인 PCM을 wav로 변환
     var wavData = transformToWav(audioBuffer);
 
     // print("audioBuffer.isEmpty ${audioBuffer.isEmpty}");
 
-    if (audioBuffer.isNotEmpty) {
-      print("send not empty Audio / audioBuffer.length ${audioBuffer
-          .length} / isFinal $isFinal");
+    if (audioBuffer.isNotEmpty && audioBuffer.length >= sampleRate!) {
+      print("send not empty Audio / audioBuffer.length ${audioBuffer.length} / isFinal $isFinal");
       // 웹소켓을 통해 wav 전송
       Isolate.spawn(sendOverWebSocket, {
         'wavData': wavData,
@@ -216,8 +210,9 @@ class mAudioStreamer {
     final isFinal = args['isFinal'];
 
     //채널 설정
-    final channel = IOWebSocketChannel.connect('ws://192.168.1.103:8080');
-    // final channel = IOWebSocketChannel.connect('wss://www.voiceai.co.kr:8889/client/ws/flutter');
+    // final channel = IOWebSocketChannel.connect('ws://192.168.1.103:8080');
+    final channel = IOWebSocketChannel.connect(
+        'wss://www.voiceai.co.kr:8889/client/ws/flutter');
 
     //wav 파일을 base64로 인코딩
     var base64WavData = base64Encode(wavData);
