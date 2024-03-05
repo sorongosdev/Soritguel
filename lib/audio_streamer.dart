@@ -92,15 +92,16 @@ class mAudioStreamer {
   /// 오디오 샘플링을 멈추고 변수를 초기화
   Future<void> stopRecording() async {
 
-    // 현재 오디오 의미 없을 때 이전 오디오만 전송
-    if (audio.length <= 6400 ||
+    // 현재 오디오 의미 없을 때(1초보다 작은 크기) 이전 오디오만 전송
+    if (audio.length <= sampleRate! ||
         (!isSpeakingArr[0] && !isSpeakingArr[1] && !isSpeakingArr[2])) {
-      print("useless current audio");
+      print("eod: useless current audio. send only prev audio");
       sendAudio(audioBuffer: prevAudio, isFinal: true);
     }
     // 현재 오디오 의미 있을 때 현재 오디오를 전송
     else {
-      print("useful current audio");
+      print("eod: useful current audio. send prev, current audio");
+      sendAudio(audioBuffer: prevAudio, isFinal: false);
       sendAudio(audioBuffer: audio, isFinal: true);
     }
 
@@ -139,8 +140,11 @@ class mAudioStreamer {
 
     // prevAudio를 보냄
     if (isBufferUpdated) {
+      print("eod: send past audio");
       sendAudio(audioBuffer: pastAudio, isFinal: false);
     }
+
+    // 예상 출력 : past, prev, prev
 
     // 현재 audio는 바로 보내지 않고 이전 상태에 저장
     if (isSpeakingArr[0] && !isSpeakingArr[1] && !isSpeakingArr[2]) {
@@ -187,7 +191,7 @@ class mAudioStreamer {
 
   ///웹소켓 통신으로 실제로 wav를 isolate로 전송
   void sendAudio({required List<double> audioBuffer, required bool isFinal}) {
-    // print("send Audio / isfinal $isFinal / audioBuffer.length ${audioBuffer.length}");
+    print("eod: send Audio / isfinal $isFinal / audioBuffer.length ${audioBuffer.length}");
     // 원시 오디오 데이터인 PCM을 wav로 변환
     var wavData = transformToWav(audioBuffer);
 
@@ -212,8 +216,8 @@ class mAudioStreamer {
     final isFinal = args['isFinal'];
 
     //채널 설정
-    // final channel = IOWebSocketChannel.connect('ws://192.168.1.101:8080');
-    final channel = IOWebSocketChannel.connect('wss://www.voiceai.co.kr:8889/client/ws/flutter');
+    final channel = IOWebSocketChannel.connect('ws://192.168.1.103:8080');
+    // final channel = IOWebSocketChannel.connect('wss://www.voiceai.co.kr:8889/client/ws/flutter');
 
     //wav 파일을 base64로 인코딩
     var base64WavData = base64Encode(wavData);
@@ -232,8 +236,6 @@ class mAudioStreamer {
 
   /// 오디오 PCM을 wav로 바꾸는 함수
   Uint8List transformToWav(List<double> pcmData) {
-    // int sampleRate = 22100;
-    // print("transformToWav $sampleRate");
     int numSamples = pcmData.length;
     int numChannels = 1;
     int sampleSize = 2; // 16 bits#########
