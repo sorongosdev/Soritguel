@@ -40,6 +40,8 @@ class mAudioStreamer {
   ReceivePort receivePort = ReceivePort(); // 수신 포트 설정
   IOWebSocketChannel? channel; //웹소켓 채널 객체
 
+  int cnt = 0;
+
   mAudioStreamer() {
     _init();
     receivePort.listen((message) {
@@ -51,6 +53,7 @@ class mAudioStreamer {
         channel?.sink.close(); // 웹소켓 채널 닫음
         audio.clear(); // 오디오 데이터
         prevAudio.clear();
+        cnt = 0;
         isFinal = false;
         receivedText.value = List.empty(); // 녹음이 중지되면 서버에서 받아오기 위해 사용했던 변수를 비워줌
       } else {
@@ -189,12 +192,16 @@ class mAudioStreamer {
     // print("audioBuffer.isEmpty ${audioBuffer.isEmpty}");
 
     if (audioBuffer.isNotEmpty && audioBuffer.length >= sampleRate!) {
-      print("send not empty Audio / audioBuffer.length ${audioBuffer.length} / isFinal $isFinal");
+      print(
+          "send not empty Audio / audioBuffer.length ${audioBuffer.length} / isFinal $isFinal");
       // 웹소켓을 통해 wav 전송
       Isolate.spawn(sendOverWebSocket, {
         'wavData': wavData,
         'sendPort': receivePort.sendPort,
         'isFinal': isFinal, // 마지막 데이터인지 나타내는 변수 추가
+      }).then((_) {
+        print('eod: send $cnt finished');
+        cnt++;
       });
     }
   }
