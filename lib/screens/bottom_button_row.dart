@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'text_size_model.dart';
+import '../models/text_size_model.dart';
 
 ///하단 버튼 행
 class BottomButtonRow extends StatefulWidget {

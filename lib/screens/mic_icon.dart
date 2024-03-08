@@ -1,7 +1,7 @@
 /// mic_icon.dart
 import 'package:flutter/material.dart';
 // import 'audio_recorder.dart';
-import 'audio_streamer.dart';
+import '../src/audio_streamer.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 /// 마이크 아이콘, 녹음 시작/중지 시 아이콘이 변경되어야하므로 Stateful 사용

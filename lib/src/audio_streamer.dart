@@ -5,14 +5,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:audio_streamer/audio_streamer.dart';
+import 'package:flutter_project/constants/ZerothDefine.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import 'dart:typed_data';
 import 'package:web_socket_channel/io.dart';
 import 'dart:isolate';
-import 'package:device_info_plus/device_info_plus.dart';
-import 'dart:io' show Platform;
 
 class mAudioStreamer {
   ///proivder 관련 변수
@@ -27,12 +26,11 @@ class mAudioStreamer {
   ///오디오 스트리머 세팅 관련 변수들
   dynamic _audioStreamer; // 오디오스트리머 객체
 
-  int sampleRate = 44100; // 샘플링율
+  int sampleRate = ZerothDefine.ZEROTH_RATE_44; // 샘플링율
   List<double> prevAudio = [];
   List<double> pastAudio = [];
   List<double> audio = [];
   bool isBufferUpdated = false;
-  bool isFinal = false;
 
   StreamSubscription<List<double>>? audioSubscription;
   DateTime? lastSpokeAt; //마지막 말한 시점의 시간
@@ -54,12 +52,11 @@ class mAudioStreamer {
         audio.clear(); // 오디오 데이터
         prevAudio.clear();
         cnt = 0;
-        isFinal = false;
         receivedText.value = List.empty(); // 녹음이 중지되면 서버에서 받아오기 위해 사용했던 변수를 비워줌
       } else {
         // 서버로부터 메시지를 받아 저장
         receivedText.value = List.empty(); // 실시간으로 받아오고 있기 때문에, 받아올 때마다 비워주어야함.
-        print("eod: msg $message");
+        // print("eod: msg $message");
         receivedText.value = List.from(receivedText.value)..add(message);
       }
     });
@@ -95,12 +92,12 @@ class mAudioStreamer {
   Future<void> stopRecording() async {
     // 현재 오디오 의미 없을 때(1초보다 작은 크기) 이전 오디오만 전송
     if (!isSpeakingArr[0] && !isSpeakingArr[1] && !isSpeakingArr[2]) {
-      print("eod: useless current audio. send only prev audio");
+      // print("eod: useless current audio. send only prev audio");
       sendAudio(audioBuffer: prevAudio, isFinal: true);
     }
     // 현재 오디오 의미 있을 때 현재 오디오를 전송
     else {
-      print("eod: useful current audio. send prev, current audio");
+      // print("eod: useful current audio. send prev, current audio");
       sendAudio(audioBuffer: prevAudio, isFinal: false);
       sendAudio(audioBuffer: audio, isFinal: true);
     }
@@ -136,7 +133,7 @@ class mAudioStreamer {
 
     // prevAudio를 보냄
     if (isBufferUpdated) {
-      print("eod: send past audio");
+      // print("eod: send past audio");
       sendAudio(audioBuffer: pastAudio, isFinal: false);
     }
 
@@ -184,8 +181,8 @@ class mAudioStreamer {
 
   ///웹소켓 통신으로 실제로 wav를 isolate로 전송
   void sendAudio({required List<double> audioBuffer, required bool isFinal}) {
-    print(
-        "eod: send Audio / isfinal $isFinal / audioBuffer.length ${audioBuffer.length}");
+    // print(
+    //     "eod: send Audio / isfinal $isFinal / audioBuffer.length ${audioBuffer.length}");
     // 원시 오디오 데이터인 PCM을 wav로 변환
     var wavData = transformToWav(audioBuffer);
 
@@ -200,7 +197,7 @@ class mAudioStreamer {
         'sendPort': receivePort.sendPort,
         'isFinal': isFinal, // 마지막 데이터인지 나타내는 변수 추가
       }).then((_) {
-        print('eod: send $cnt finished');
+        // print('eod: send $cnt finished');
         cnt++;
       });
     }
@@ -214,8 +211,7 @@ class mAudioStreamer {
 
     //채널 설정
     // final channel = IOWebSocketChannel.connect('ws://192.168.1.103:8080');
-    final channel = IOWebSocketChannel.connect(
-        'wss://www.voiceai.co.kr:8889/client/ws/flutter');
+    final channel = IOWebSocketChannel.connect(ZerothDefine.MY_URL_test);
 
     //wav 파일을 base64로 인코딩
     var base64WavData = base64Encode(wavData);
@@ -235,7 +231,7 @@ class mAudioStreamer {
   /// 오디오 PCM을 wav로 바꾸는 함수
   Uint8List transformToWav(List<double> pcmData) {
     int numSamples = pcmData.length;
-    int numChannels = 1;
+    int numChannels = ZerothDefine.ZEROTH_MONO;
     int sampleSize = 2; // 16 bits#########
 
     int byteRate = sampleRate * numChannels * sampleSize;

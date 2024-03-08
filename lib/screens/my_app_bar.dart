@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'my_text_field.dart';
-import 'text_store_model.dart'; // TextModel을 import 해야 합니다.
+import '../models/text_store_model.dart'; // TextModel을 import 해야 합니다.
 
 class MyAppBar extends StatelessWidget implements PreferredSizeWidget{
   @override

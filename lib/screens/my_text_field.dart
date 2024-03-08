@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_project/text_store_model.dart';
+import 'package:flutter_project/models/text_store_model.dart';
 import 'package:provider/provider.dart';
-import 'text_size_model.dart';
+import '../models/text_size_model.dart';
 
 /// 텍스트필드, 상태가 변경되기 때문에 stateful 사용
 class MyTextField extends StatefulWidget {

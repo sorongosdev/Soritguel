@@ -1,15 +1,16 @@
 ///main.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'my_app_bar.dart';
-import 'mic_icon.dart';
-import 'description_text.dart';
-import 'my_text_field.dart';
-import 'bottom_button_row.dart';
+import 'screens/my_app_bar.dart';
+import 'screens/mic_icon.dart';
+import 'screens/description_text.dart';
+import 'screens/my_text_field.dart';
+import 'screens/bottom_button_row.dart';
+
 // import 'audio_recorder.dart';
-import 'audio_streamer.dart';
-import 'text_size_model.dart';
-import 'text_store_model.dart';
+import 'src/audio_streamer.dart';
+import 'models/text_size_model.dart';
+import 'models/text_store_model.dart';
 
 void main() {
   runApp(
@@ -85,9 +86,4 @@ class MyWidgetState extends State<MyWidget> {
       ),
     );
   }
-  // @override
-  // void dispose() {
-  //   audioStreamer.dispose();
-  //   super.dispose();
-  // }
 }
