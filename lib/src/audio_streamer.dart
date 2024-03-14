@@ -13,6 +13,9 @@ import 'dart:typed_data';
 import 'package:web_socket_channel/io.dart';
 import 'dart:isolate';
 
+import 'dart:typed_data';
+import 'dart:math' as math;
+
 class mAudioStreamer {
   ///proivder 관련 변수
   ValueNotifier<bool> isRecording =
@@ -21,24 +24,35 @@ class mAudioStreamer {
       []); // 서버에서 받은 변수, 여러 줄일 수 있기 때문에 List<String> 타입
 
   bool isSpeaking = false; // 말하고 있는 중인지
-  List<bool> isSpeakingArr = [false, false, false]; // isSpeaking 상태 저장
 
   ///오디오 스트리머 세팅 관련 변수들
   dynamic _audioStreamer; // 오디오스트리머 객체
 
   int sampleRate = ZerothDefine.ZEROTH_RATE_44; // 샘플링율
-  List<double> prevAudio = [];
-  List<double> pastAudio = [];
-  List<double> audio = [];
+  List<double> prevAudio = []; // audio 이전의 버퍼
+  List<double> pastAudio = []; // prevAudio 이전의 버퍼
+  List<double> audio = []; // 현재 버퍼
   bool isBufferUpdated = false;
 
   StreamSubscription<List<double>>? audioSubscription;
-  DateTime? lastSpokeAt; //마지막 말한 시점의 시간
+  DateTime? lastSpokeAt; // 마지막 말한 시점의 시간
 
   ReceivePort receivePort = ReceivePort(); // 수신 포트 설정
-  IOWebSocketChannel? channel; //웹소켓 채널 객체
+  IOWebSocketChannel? channel; // 웹소켓 채널 객체
 
-  int cnt = 0;
+  // double? dynamic_energy_adjustment_damping = 0.15;
+  // double? dynamic_energy_ratio = 1.5; // 민감도: 높은 값을 잡을 수록 작은 소리에는 오디오 전송을 시작하지 않음
+  double? energy_threshold = 0.1;
+  double? energy_rest_threshold = 0.15;
+  double? energy;
+  bool? prevSpeakingState;
+  double minBufferSize = ZerothDefine.ZEROTH_RATE_44 / 2;
+  double maxBufferSize = 30000;
+  double prev_energy = 0;
+  double prev_energy_diff = 0;
+  double curr_energy_diff = 0;
+  double past_energy_diff = 0;
+  double curr_energy_diff2 = 0;
 
   mAudioStreamer() {
     _init();
@@ -51,7 +65,6 @@ class mAudioStreamer {
         channel?.sink.close(); // 웹소켓 채널 닫음
         audio.clear(); // 오디오 데이터
         prevAudio.clear();
-        cnt = 0;
         receivedText.value = List.empty(); // 녹음이 중지되면 서버에서 받아오기 위해 사용했던 변수를 비워줌
       } else {
         // 서버로부터 메시지를 받아 저장
@@ -65,14 +78,24 @@ class mAudioStreamer {
   ///오디오 객체 초기화
   Future<void> _init() async {
     _audioStreamer = AudioStreamer();
+    prevSpeakingState = false;
   }
+
+  /// 권한이 허용됐는지 체크
+  Future<bool> checkPermission() async => await Permission.microphone.isGranted;
+
+  /// 마이크 권한 요청
+  Future<void> requestPermission() async =>
+      await Permission.microphone.request();
 
   ///오디오 샘플링 시작
   Future<void> startRecording() async {
+    //권한 체크
     if (!(await checkPermission())) {
-      //권한 체크
       await requestPermission();
     }
+
+    prevSpeakingState = false;
 
     // 샘플링율 - 안드로이드에서만 동작
     _audioStreamer.sampleRate = 44100;
@@ -90,14 +113,17 @@ class mAudioStreamer {
 
   /// 오디오 샘플링을 멈추고 변수를 초기화
   Future<void> stopRecording() async {
-    // 현재 오디오 의미 없을 때(1초보다 작은 크기) 이전 오디오만 전송
-    if (!isSpeakingArr[0] && !isSpeakingArr[1] && !isSpeakingArr[2]) {
-      // print("eod: useless current audio. send only prev audio");
+    audio.clear();
+    // 의미 없는 오디오 조건: 0.5초보다 작은 크기이거나 rms값이 작을 때
+    // 현재 오디오 의미 없을 때 이전 오디오만 전송
+    if (audio.length < minBufferSize || getRMS(audio) <= 0.05) {
+      print("vad: current useless audio.");
       sendAudio(audioBuffer: prevAudio, isFinal: true);
     }
     // 현재 오디오 의미 있을 때 현재 오디오를 전송
     else {
       // print("eod: useful current audio. send prev, current audio");
+      print("vad: current meaningful audio.");
       sendAudio(audioBuffer: prevAudio, isFinal: false);
       sendAudio(audioBuffer: audio, isFinal: true);
     }
@@ -108,64 +134,81 @@ class mAudioStreamer {
     isRecording.value = false;
   }
 
-  /// 권한이 허용됐는지 체크
-  Future<bool> checkPermission() async => await Permission.microphone.isGranted;
-
-  /// 마이크 권한 요청
-  Future<void> requestPermission() async =>
-      await Permission.microphone.request();
-
   /// 오디오 샘플링 콜백
   void onAudio(List<double> buffer) async {
     // 버퍼에 음성 데이터를 추가
     audio.addAll(buffer);
 
-    double threshold = 0.1; // 침묵 기준 진폭
-    double maxAmp = buffer.reduce(max); // 음성 진폭
+    // 음성 입력 크기 저장
+    energy = getRMS(audio);
 
-    // isSpeaking 업데이트
-    updateSpeakingStatus(threshold, maxAmp);
+    updateSpeakingStatus();
 
-    // print("isSpeaking $isSpeaking");
-
-    // 3초 침묵 감지시 녹음 중지
     checkSilence();
 
-    // prevAudio를 보냄
+    // 버퍼가 업데이트 됐다면 prevAudio를 전송
     if (isBufferUpdated) {
-      // print("eod: send past audio");
       sendAudio(audioBuffer: pastAudio, isFinal: false);
     }
 
-    // 예상 출력 : past, prev, prev
-
+    // 말을 쉬고 있는 중일 때, rms가 일정 값 이상 감소하면 오디오 버퍼 업데이트(말마디 자르기 구현)
     // 현재 audio는 바로 보내지 않고 이전 상태에 저장
-    if (isSpeakingArr[0] && !isSpeakingArr[1] && !isSpeakingArr[2]) {
+    curr_energy_diff = energy! - prev_energy;
+
+    //TODO - energy_rest_threshold 0.15 이상까지 증가했다 떨어지는 시점에 감지
+    //TODO - 안 되면 네이티브 코드처럼 바이트 버퍼 사용하기
+    if (audio.length > minBufferSize && prevSpeakingState!
+        && isSpeaking
+        // && past_energy_diff < 0
+        && past_energy_diff > prev_energy_diff
+        && curr_energy_diff < prev_energy_diff){ // 감소하는 중이면서
+        // && ratio < -2) { // 30퍼센트 이하로 감소하면
+      // if (prevSpeakingState! && isSpeaking && (curr_energy_diff*(-1))/(prev_energy_diff - curr_energy_diff) < 0.8){
+      // if (prevSpeakingState! && isSpeaking && curr_energy_diff < 0.02){
+      // if (prevSpeakingState! && isSpeaking){
+      // 에너지 변화율이 50% 이하로 떨어지면
+      // if (prevSpeakingState! && isSpeaking && prev_energy_diff > 0 && (-curr_energy_diff)/(prev_energy_diff - curr_energy_diff) < 0.16) {
+
       isBufferUpdated = true;
+
       pastAudio = List.from(prevAudio);
       prevAudio = List.from(audio);
-      // print("prevAudio and audio length ${prevAudio.length} ${audio.length}");
+      print("vad: buffer updated. buffer length: ${audio.length}");
+
       audio.clear();
     } else {
       isBufferUpdated = false;
     }
+
+    print("vad: isSpeaking $isSpeaking // energy $energy // current_energy_diff $curr_energy_diff");
+    // print("vad: curr_energy_diff $curr_energy_diff // prev_energy_diff $prev_energy_diff "
+    //     "// ratio ${curr_energy_diff/(prev_energy_diff-curr_energy_diff)}");
+
+    past_energy_diff = prev_energy_diff;
+    prev_energy_diff = curr_energy_diff;
+
+    prev_energy = energy!;
   }
 
-  /// 음성의 진폭에 따라 isSpeaking, isSpeakingArr 업데이트해주는 메소드
-  void updateSpeakingStatus(double threshold, double maxAmp) {
-    // isSpeaking의 현재 상태 업데이트를 위해 리스트 shift
-    isSpeakingArr[0] = isSpeakingArr[1]; // 인덱스1 값을 0으로 옮겨줌
-    isSpeakingArr[1] = isSpeakingArr[2]; // 인덱스2 값을 1으로 옮겨줌
+  /// 오디오 버퍼를 받아 RMS로 리턴
+  double getRMS(List<double> buffer) {
+    double sum = 0;
+    for (int i = 0; i < buffer.length; i++) {
+      sum += buffer[i] * buffer[i];
+    }
+    sum /= buffer.length;
+    return sqrt(sum);
+  }
 
-    if (maxAmp > threshold && !isSpeaking) {
-      // 말하는 중인지 판단
-      isSpeaking = true;
+  /// 음성 진폭의 rms에 따라 isSpeaking을 업데이트해주는 메소드
+  void updateSpeakingStatus() {
+    prevSpeakingState = isSpeaking;
+    if (energy! > energy_threshold!) {
       lastSpokeAt = DateTime.now();
+      isSpeaking = true;
     } else {
       isSpeaking = false;
     }
-
-    isSpeakingArr[2] = isSpeaking; // 현재 isSpeaking 상태를 인덱스2에 저장
   }
 
   ///침묵을 감지하는 함수
@@ -175,30 +218,25 @@ class mAudioStreamer {
         DateTime.now().difference(lastSpokeAt!).inSeconds >= 3) {
       stopRecording();
       Fluttertoast.showToast(msg: "침묵이 감지되었습니다.");
-      print('Stopped recording due to silence.');
+      print('vad: silence detected // ${DateTime.now()}');
     }
   }
 
   ///웹소켓 통신으로 실제로 wav를 isolate로 전송
   void sendAudio({required List<double> audioBuffer, required bool isFinal}) {
-    // print(
-    //     "eod: send Audio / isfinal $isFinal / audioBuffer.length ${audioBuffer.length}");
     // 원시 오디오 데이터인 PCM을 wav로 변환
     var wavData = transformToWav(audioBuffer);
 
-    // print("audioBuffer.isEmpty ${audioBuffer.isEmpty}");
+    // minBufferSize 이상일 때만 전송
+    if (audioBuffer.isNotEmpty) {
+      // if (audioBuffer.length >= minBufferSize) {
+      // print("vad: sendAudio bufferSize ${audioBuffer.length}");
 
-    if (audioBuffer.isNotEmpty && audioBuffer.length >= sampleRate!) {
-      print(
-          "send not empty Audio / audioBuffer.length ${audioBuffer.length} / isFinal $isFinal");
       // 웹소켓을 통해 wav 전송
       Isolate.spawn(sendOverWebSocket, {
         'wavData': wavData,
         'sendPort': receivePort.sendPort,
         'isFinal': isFinal, // 마지막 데이터인지 나타내는 변수 추가
-      }).then((_) {
-        // print('eod: send $cnt finished');
-        cnt++;
       });
     }
   }
@@ -210,7 +248,6 @@ class mAudioStreamer {
     final isFinal = args['isFinal'];
 
     //채널 설정
-    // final channel = IOWebSocketChannel.connect('ws://192.168.1.103:8080');
     final channel = IOWebSocketChannel.connect(ZerothDefine.MY_URL_test);
 
     //wav 파일을 base64로 인코딩
