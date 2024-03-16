@@ -149,21 +149,24 @@ class mAudioStreamer {
       lte = 0.98 * lte! + 0.02 * ste; // 지수 가중 평균 이용
     }
 
+    if(isSpeaking){
+      newAudio = List.from(audio);
+    }
+
     // 말마디 감지 로직
     if (!isSpeaking && ste > lte! * threshold) {
       isSpeaking = true;
-      // newAudio.addAll(audio);
       print("vad: 말마디 시작됨");
     } else if (isSpeaking && ste <= lte! * threshold) {
       isSpeaking = false;
-      // newAudio.
       lastSpokeAt = DateTime.now();
       print("vad: 말마디 끝남");
 
       pastAudio = List.from(prevAudio);
-      prevAudio = List.from(audio);
+      prevAudio = List.from(newAudio);
       sendAudio(audioBuffer: pastAudio, isFinal: false);
 
+      newAudio.clear();
       audio.clear();
       lte = null; // 같이 수정2
     }
