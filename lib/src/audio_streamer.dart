@@ -43,16 +43,12 @@ class mAudioStreamer {
   // double? dynamic_energy_adjustment_damping = 0.15;
   // double? dynamic_energy_ratio = 1.5; // 민감도: 높은 값을 잡을 수록 작은 소리에는 오디오 전송을 시작하지 않음
   double? energy_threshold = 0.1;
-  double? energy_rest_threshold = 0.15;
   double? energy;
   bool? prevSpeakingState;
+
   double minBufferSize = ZerothDefine.ZEROTH_RATE_44 / 2;
-  double maxBufferSize = 30000;
-  double prev_energy = 0;
-  double prev_energy_diff = 0;
-  double curr_energy_diff = 0;
-  double past_energy_diff = 0;
-  double curr_energy_diff2 = 0;
+  double? lte; // 장기 에너지
+  List<double> newAudio = [];
 
   mAudioStreamer() {
     _init();
@@ -107,6 +103,8 @@ class mAudioStreamer {
     //마지막 말하는 중이었던 시간 업데이트
     lastSpokeAt = DateTime.now();
 
+    lte = null;
+
     // 녹음중 유무 변수를 업데이트
     isRecording.value = true;
   }
@@ -114,9 +112,9 @@ class mAudioStreamer {
   /// 오디오 샘플링을 멈추고 변수를 초기화
   Future<void> stopRecording() async {
     audio.clear();
-    // 의미 없는 오디오 조건: 0.5초보다 작은 크기이거나 rms값이 작을 때
+    // 의미 없는 오디오 조건:
     // 현재 오디오 의미 없을 때 이전 오디오만 전송
-    if (audio.length < minBufferSize || getRMS(audio) <= 0.05) {
+    if (audio.length < minBufferSize) {
       print("vad: current useless audio.");
       sendAudio(audioBuffer: prevAudio, isFinal: true);
     }
@@ -139,76 +137,42 @@ class mAudioStreamer {
     // 버퍼에 음성 데이터를 추가
     audio.addAll(buffer);
 
-    // 음성 입력 크기 저장
-    energy = getRMS(audio);
+    // 버퍼의 데시벨 단위의 STE 계산
+    double ste = getRMS(buffer);
 
-    updateSpeakingStatus();
+    double threshold = 0.7; // 음성 감지 감도. 데시벨 단위는 음수이기 때문에 이 값이 낮을수록 감지를 더 잘함
 
-    checkSilence();
-
-    // 버퍼가 업데이트 됐다면 prevAudio를 전송
-    if (isBufferUpdated) {
-      sendAudio(audioBuffer: pastAudio, isFinal: false);
+    if (lte == null) {
+      lte = ste;
+    } else {
+      // LTE 업데이트
+      lte = 0.98 * lte! + 0.02 * ste; // 지수 가중 평균 이용
     }
 
-    // 말을 쉬고 있는 중일 때, rms가 일정 값 이상 감소하면 오디오 버퍼 업데이트(말마디 자르기 구현)
-    // 현재 audio는 바로 보내지 않고 이전 상태에 저장
-    curr_energy_diff = energy! - prev_energy;
-
-    //TODO - energy_rest_threshold 0.15 이상까지 증가했다 떨어지는 시점에 감지
-    //TODO - 안 되면 네이티브 코드처럼 바이트 버퍼 사용하기
-    if (audio.length > minBufferSize && prevSpeakingState!
-        && isSpeaking
-        // && past_energy_diff < 0
-        && past_energy_diff > prev_energy_diff
-        && curr_energy_diff < prev_energy_diff){ // 감소하는 중이면서
-        // && ratio < -2) { // 30퍼센트 이하로 감소하면
-      // if (prevSpeakingState! && isSpeaking && (curr_energy_diff*(-1))/(prev_energy_diff - curr_energy_diff) < 0.8){
-      // if (prevSpeakingState! && isSpeaking && curr_energy_diff < 0.02){
-      // if (prevSpeakingState! && isSpeaking){
-      // 에너지 변화율이 50% 이하로 떨어지면
-      // if (prevSpeakingState! && isSpeaking && prev_energy_diff > 0 && (-curr_energy_diff)/(prev_energy_diff - curr_energy_diff) < 0.16) {
-
-      isBufferUpdated = true;
+    // 말마디 감지 로직
+    if (!isSpeaking && ste > lte! * threshold) {
+      isSpeaking = true;
+      // newAudio.addAll(audio);
+      print("vad: 말마디 시작됨");
+    } else if (isSpeaking && ste <= lte! * threshold) {
+      isSpeaking = false;
+      // newAudio.
+      lastSpokeAt = DateTime.now();
+      print("vad: 말마디 끝남");
 
       pastAudio = List.from(prevAudio);
       prevAudio = List.from(audio);
-      print("vad: buffer updated. buffer length: ${audio.length}");
+      sendAudio(audioBuffer: pastAudio, isFinal: false);
 
       audio.clear();
-    } else {
-      isBufferUpdated = false;
+      lte = null; // 같이 수정2
     }
 
-    print("vad: isSpeaking $isSpeaking // energy $energy // current_energy_diff $curr_energy_diff");
-    // print("vad: curr_energy_diff $curr_energy_diff // prev_energy_diff $prev_energy_diff "
-    //     "// ratio ${curr_energy_diff/(prev_energy_diff-curr_energy_diff)}");
+    checkSilence();
 
-    past_energy_diff = prev_energy_diff;
-    prev_energy_diff = curr_energy_diff;
-
-    prev_energy = energy!;
-  }
-
-  /// 오디오 버퍼를 받아 RMS로 리턴
-  double getRMS(List<double> buffer) {
-    double sum = 0;
-    for (int i = 0; i < buffer.length; i++) {
-      sum += buffer[i] * buffer[i];
-    }
-    sum /= buffer.length;
-    return sqrt(sum);
-  }
-
-  /// 음성 진폭의 rms에 따라 isSpeaking을 업데이트해주는 메소드
-  void updateSpeakingStatus() {
-    prevSpeakingState = isSpeaking;
-    if (energy! > energy_threshold!) {
-      lastSpokeAt = DateTime.now();
-      isSpeaking = true;
-    } else {
-      isSpeaking = false;
-    }
+    // 오디오 버퍼가 6400씩 증가할 때마다 로그가 한번 찍힘
+    // TODO: false일 때 오디오 버퍼의 일부를 저장해서 말마디 앞부분이 잘리지 않도록? 그냥 저장하면 너무 길다.
+      print("vad: isSpeaking $isSpeaking // STE = $ste // LTE = $lte // audio.length ${audio.length}");
   }
 
   ///침묵을 감지하는 함수
@@ -222,17 +186,39 @@ class mAudioStreamer {
     }
   }
 
+  /// 오디오 버퍼를 받아 데시벨로 리턴
+  double getRMS(List<double> buffer) {
+    double sumOfSquares = buffer.fold(0.0, (sum, value) => sum + value * value);
+    double meanSquare = sumOfSquares / buffer.length;
+    double ste = 20 * log(meanSquare) / ln10; // 평균 제곱 에너지 값을 데시벨로 변환
+    return ste;
+  }
+
+  /// 음성 진폭의 rms에 따라 isSpeaking을 업데이트해주는 메소드
+  void updateSpeakingStatus() {
+    prevSpeakingState = isSpeaking;
+    if (energy! > energy_threshold!) {
+      lastSpokeAt = DateTime.now();
+      isSpeaking = true;
+    } else {
+      isSpeaking = false;
+    }
+  }
+
+
   ///웹소켓 통신으로 실제로 wav를 isolate로 전송
   void sendAudio({required List<double> audioBuffer, required bool isFinal}) {
     // 원시 오디오 데이터인 PCM을 wav로 변환
     var wavData = transformToWav(audioBuffer);
 
+    print("vad: sendAudio bufferSize ${audioBuffer.length}");
+
     // minBufferSize 이상일 때만 전송
     if (audioBuffer.isNotEmpty) {
-      // if (audioBuffer.length >= minBufferSize) {
-      // print("vad: sendAudio bufferSize ${audioBuffer.length}");
+      print("vad: sendAudio bufferSize in if ${audioBuffer.length}");
 
       // 웹소켓을 통해 wav 전송
+
       Isolate.spawn(sendOverWebSocket, {
         'wavData': wavData,
         'sendPort': receivePort.sendPort,
