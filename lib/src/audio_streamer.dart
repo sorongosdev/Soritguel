@@ -29,10 +29,10 @@ class mAudioStreamer {
   dynamic _audioStreamer; // 오디오스트리머 객체
 
   int sampleRate = ZerothDefine.ZEROTH_RATE_44; // 샘플링율
-  List<double> prevAudio = []; // audio 이전의 버퍼
-  List<double> pastAudio = []; // prevAudio 이전의 버퍼
+  List<double>? prevAudio; // audio 이전의 버퍼
+  List<double>? pastAudio; // prevAudio 이전의 버퍼
+  List<double> newAudio = []; // isSpeaking이 true일 때의 음성만 저장하는 버퍼
   List<double> audio = []; // 현재 버퍼
-  bool isBufferUpdated = false;
 
   StreamSubscription<List<double>>? audioSubscription;
   DateTime? lastSpokeAt; // 마지막 말한 시점의 시간
@@ -40,21 +40,11 @@ class mAudioStreamer {
   ReceivePort receivePort = ReceivePort(); // 수신 포트 설정
   IOWebSocketChannel? channel; // 웹소켓 채널 객체
 
-  // double? dynamic_energy_adjustment_damping = 0.15;
-  // double? dynamic_energy_ratio = 1.5; // 민감도: 높은 값을 잡을 수록 작은 소리에는 오디오 전송을 시작하지 않음
-  double? energy_threshold = 0.1;
-  double? energy;
-  bool? prevSpeakingState;
-
-  double minBufferSize = ZerothDefine.ZEROTH_RATE_44 / 2;
-  double? lte; // 장기 에너지
-  List<double> newAudio = [];
-  double threshold =
-      ZerothDefine.RESTING_THRESHOLD; // 음성 감지 감도. 데시벨 단위는 음수이기 때문에 이 값이 낮을수록 감지를 더 잘함
-  double lte_ratio = ZerothDefine.LTE_RATIO;
-  double ste_ratio = ZerothDefine.STE_RATIO;
-  double? ste;
-  double? lte_start = -80;
+  double minBufferSize = ZerothDefine.ZEROTH_RATE_44 / 2; // 44100 샘플링율을 가질 때 최소 버퍼 사이즈는 22050
+  double speaking_threshold = ZerothDefine.SPEAKING_THRESHOLD; // 문장 감지 기준 데시벨
+  double? buffer_cut_threshold; // 문장 시작 처음의 에너지를 저장하는 변수
+  double buffer_cut_ratio = ZerothDefine.BUFFER_CUT_RATIO; // 단어 감지 감도 계수
+  double? energy; // 현재 버퍼의 에너지
 
   mAudioStreamer() {
     _init();
@@ -66,7 +56,7 @@ class mAudioStreamer {
         print("vad: EOD");
         channel?.sink.close(); // 웹소켓 채널 닫음
         audio.clear(); // 오디오 데이터
-        prevAudio.clear();
+        prevAudio!.clear();
         receivedText.value = List.empty(); // 녹음이 중지되면 서버에서 받아오기 위해 사용했던 변수를 비워줌
       } else {
         // 서버로부터 메시지를 받아 저장
@@ -80,7 +70,6 @@ class mAudioStreamer {
   ///오디오 객체 초기화
   Future<void> _init() async {
     _audioStreamer = AudioStreamer();
-    prevSpeakingState = false;
   }
 
   /// 권한이 허용됐는지 체크
@@ -97,8 +86,6 @@ class mAudioStreamer {
       await requestPermission();
     }
 
-    prevSpeakingState = false;
-
     // 샘플링율 - 안드로이드에서만 동작
     _audioStreamer.sampleRate = sampleRate;
 
@@ -109,31 +96,29 @@ class mAudioStreamer {
     //마지막 말하는 중이었던 시간 업데이트
     lastSpokeAt = DateTime.now();
 
-    lte = null;
-
     // 녹음중 유무 변수를 업데이트
     isRecording.value = true;
   }
 
   /// 오디오 샘플링을 멈추고 변수를 초기화
   Future<void> stopRecording() async {
-    audio.clear();
-    // 의미 없는 오디오 조건:
+    // audio.clear();
+    // TODO: 의미 없는 오디오 조건 : energy가 너무 작을 때
+    double rms = getRMS(audio);
+
     // 현재 오디오 의미 없을 때 이전 오디오만 전송
-    if (audio.length < minBufferSize) {
+    if (newAudio.length < minBufferSize) {
       print("vad: current useless audio.");
-      sendAudio(audioBuffer: prevAudio, isFinal: true);
+      sendAudio(audioBuffer: prevAudio!, isFinal: true);
     }
     // 현재 오디오 의미 있을 때 현재 오디오를 전송
     else {
-      // print("eod: useful current audio. send prev, current audio");
       print("vad: current meaningful audio.");
-      sendAudio(audioBuffer: prevAudio, isFinal: false);
+      sendAudio(audioBuffer: prevAudio!, isFinal: false);
       sendAudio(audioBuffer: newAudio, isFinal: true);
     }
 
     audioSubscription?.cancel();
-    isBufferUpdated = false;
     lastSpokeAt = null;
     isRecording.value = false;
   }
@@ -144,21 +129,7 @@ class mAudioStreamer {
     audio.addAll(buffer);
 
     // 버퍼의 데시벨 단위의 STE 계산
-    ste = getRMS(buffer);
-
-    // if (lte == null) { // 맨 처음의 lte 값을 lte_start에 저장
-    //   lte = ste;
-    //   lte_start = lte; // 맨 처음 lte의 값을 lte_start에 저장
-    // }
-    // else {
-    //   // LTE 업데이트
-    //   lte = lte_ratio * lte! + ste_ratio * ste!; // 지수 가중 평균 이용
-    // }
-    lte = lte_start;
-
-    if (isSpeaking) {
-      newAudio = List.from(audio);
-    }
+    energy = getRMS(buffer);
 
     // 말마디 감지 로직
     updateSpeakingStatus();
@@ -167,42 +138,64 @@ class mAudioStreamer {
 
     // 오디오 버퍼가 6400씩 증가할 때마다 로그가 한번 찍힘
     print(
-        "vad: isSpeaking $isSpeaking // STE = $ste // LTE = $lte // audio.length ${newAudio.length}");
+        "vad: isSpeaking $isSpeaking // energy = $energy // audio.length ${newAudio.length}");
   }
 
-  /// 음성 데시벨의 rms에 따라 isSpeaking을 업데이트해주는 메소드
+  /// 음성 데시벨의 rms에 따라 isSpeaking을 업데이트하고, 문장과 단어를 감지하는 함수
   void updateSpeakingStatus() {
+    // 말하지 않는 중일 때
     if (!isSpeaking) {
-      threshold = ZerothDefine.RESTING_THRESHOLD; // false일 때 감지 감도는 기본 감지 감도
-      if (ste! > lte! * threshold) {
+      // 임계값 이상이면 isSpeaking을 true로 변경
+      if (energy! > speaking_threshold) {
         isSpeaking = true;
-        print("vad: 말마디 시작됨");
-      }
-    } else if (isSpeaking) {
-      threshold = ZerothDefine.SPEAKING_THRESHOLD; // 말하는 중일 때는 감도를 낮춰 말마디 감지를 더 잘하게 함(이 값은 감도와 반비례)
-      if (ste! <= lte! * threshold && newAudio.length > 6400 * 2) {
-        isSpeaking = false;
-        lastSpokeAt = DateTime.now();
-        print("vad: 말마디 끝남");
-
-        pastAudio = List.from(prevAudio);
-        prevAudio = List.from(newAudio);
-        sendAudio(audioBuffer: pastAudio, isFinal: false);
-
-        newAudio.clear();
-        audio.clear();
-        // lte = ste!; // 말마디가 끊겼을 때 lte를 조정해줌
-        lte = lte_start; // 말마디가 끊겼을 때 lte를 조정해줌
+        print("vad: 문장 시작됨");
+        buffer_cut_threshold = energy; // 말하기 시작할 때의 처음 ste 값을 저장
       }
     }
+    // 말하는 중일 때
+    else if (isSpeaking) {
+      // newAudio를 업데이트 해줌
+      newAudio = List.from(audio);
+
+      // 문장 감지 - 임계값 이하면 isSpeaking을 false로 변경
+      if (energy! <= speaking_threshold && newAudio.length > 6400 * 2) {
+        print("vad: 문장 끝남");
+
+        isSpeaking = false;
+        lastSpokeAt = DateTime.now();
+
+        updateBuffer();
+      }
+
+      // 단어 감지 - 단어를 시작했던 에너지보다 작은 ste를 가지면서, 일정 오디오 크기 이상일 때 newAudio를 전송하고 버퍼를 비워줌
+      if(energy! < buffer_cut_threshold! * buffer_cut_ratio && newAudio.length > 6400 * 9){ // 계수를 곱해서 값 스케일링 할 것
+        print("vad: 단어 끝남");
+        updateBuffer();
+      }
+    }
+  }
+
+  /// 문장이나 단어가 끝나면 버퍼를 업데이트하고 이전에 저장된 버퍼를 전송하는 함수
+  void updateBuffer(){
+    if (prevAudio != null) {
+      print("vad: prevAudio is not null");
+
+      pastAudio = List.from(prevAudio!);
+      sendAudio(audioBuffer: pastAudio!, isFinal: false);
+    }
+    prevAudio = List.from(newAudio);
+
+    // 현재 버퍼를 저장하고 비워줌
+    newAudio.clear();
+    audio.clear();
   }
 
   /// 오디오 버퍼를 받아 데시벨로 리턴
   double getRMS(List<double> buffer) {
     double sumOfSquares = buffer.fold(0.0, (sum, value) => sum + value * value);
     double meanSquare = sumOfSquares / buffer.length;
-    double ste = 20 * log(meanSquare) / ln10; // 평균 제곱 에너지 값을 데시벨로 변환
-    return ste;
+    double energy = 20 * log(meanSquare) / ln10; // 평균 제곱 에너지 값을 데시벨로 변환
+    return energy;
   }
 
   ///웹소켓 통신으로 실제로 wav를 isolate로 전송
@@ -214,7 +207,7 @@ class mAudioStreamer {
 
     // minBufferSize 이상일 때만 전송
     if (audioBuffer.isNotEmpty) {
-      print("vad: sendAudio bufferSize in if ${audioBuffer.length}");
+      print("vad: sendAudio bufferSize in if ${audioBuffer.length} isFinal $isFinal");
 
       // 웹소켓을 통해 wav 전송
 
@@ -309,4 +302,5 @@ class mAudioStreamer {
     isRecording.value = false; //에러 발생시 녹음 중지
     print(error);
   }
+
 }
