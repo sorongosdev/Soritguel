@@ -31,7 +31,6 @@ class mAudioStreamer {
   int sampleRate = ZerothDefine.ZEROTH_RATE_44; // 샘플링율
   List<double>? prevAudio; // audio 이전의 버퍼
   List<double>? pastAudio; // prevAudio 이전의 버퍼
-  List<double> newAudio = []; // isSpeaking이 true일 때의 음성만 저장하는 버퍼
   List<double> audio = []; // 현재 버퍼
 
   StreamSubscription<List<double>>? audioSubscription;
@@ -102,12 +101,8 @@ class mAudioStreamer {
 
   /// 오디오 샘플링을 멈추고 변수를 초기화
   Future<void> stopRecording() async {
-    // audio.clear();
-    // TODO: 의미 없는 오디오 조건 : energy가 너무 작을 때
-    double rms = getRMS(audio);
-
     // 현재 오디오 의미 없을 때 이전 오디오만 전송
-    if (newAudio.length < minBufferSize) {
+    if (audio.length < minBufferSize) {
       print("vad: current useless audio.");
       sendAudio(audioBuffer: prevAudio!, isFinal: true);
     }
@@ -115,7 +110,7 @@ class mAudioStreamer {
     else {
       print("vad: current meaningful audio.");
       sendAudio(audioBuffer: prevAudio!, isFinal: false);
-      sendAudio(audioBuffer: newAudio, isFinal: true);
+      sendAudio(audioBuffer: audio, isFinal: true);
     }
 
     audioSubscription?.cancel();
@@ -138,27 +133,28 @@ class mAudioStreamer {
 
     // 오디오 버퍼가 6400씩 증가할 때마다 로그가 한번 찍힘
     print(
-        "vad: isSpeaking $isSpeaking // energy = $energy // audio.length ${newAudio.length}");
+        "vad: isSpeaking $isSpeaking // energy $energy // audio.length ${audio.length}");
   }
 
-  /// 음성 데시벨의 rms에 따라 isSpeaking을 업데이트하고, 문장과 단어를 감지하는 함수
+  /// 음성 rms의 데시벨에 따라 isSpeaking을 업데이트하고, 문장과 단어를 감지하는 함수
   void updateSpeakingStatus() {
     // 말하지 않는 중일 때
     if (!isSpeaking) {
+      audio.clear(); // 오디오를 비워줌으로써 메모리 관리
       // 임계값 이상이면 isSpeaking을 true로 변경
       if (energy! > speaking_threshold) {
         isSpeaking = true;
         print("vad: 문장 시작됨");
-        buffer_cut_threshold = energy; // 말하기 시작할 때의 처음 ste 값을 저장
+        buffer_cut_threshold = energy; // 말한 직후의 에너지를 저장
       }
     }
     // 말하는 중일 때
     else if (isSpeaking) {
-      // newAudio를 업데이트 해줌
-      newAudio = List.from(audio);
+      // // newAudio를 업데이트 해줌
+      // newAudio = List.from(audio);
 
       // 문장 감지 - 임계값 이하면 isSpeaking을 false로 변경
-      if (energy! <= speaking_threshold && newAudio.length > 6400 * 2) {
+      if (energy! <= speaking_threshold && audio.length > 6400 * 2) {
         print("vad: 문장 끝남");
 
         isSpeaking = false;
@@ -167,8 +163,8 @@ class mAudioStreamer {
         updateBuffer();
       }
 
-      // 단어 감지 - 단어를 시작했던 에너지보다 작은 ste를 가지면서, 일정 오디오 크기 이상일 때 newAudio를 전송하고 버퍼를 비워줌
-      if(energy! < buffer_cut_threshold! * buffer_cut_ratio && newAudio.length > 6400 * 9){ // 계수를 곱해서 값 스케일링 할 것
+      // 단어 감지 - 단어를 시작했던 에너지보다 작은 에너지를 가지면서, 일정 오디오 크기 이상일 때 오디오를 전송하고 버퍼를 비워줌
+      if(energy! < buffer_cut_threshold! * buffer_cut_ratio && audio.length > sampleRate){ // 계수를 곱해서 값 스케일링 할 것
         print("vad: 단어 끝남");
         updateBuffer();
       }
@@ -183,10 +179,9 @@ class mAudioStreamer {
       pastAudio = List.from(prevAudio!);
       sendAudio(audioBuffer: pastAudio!, isFinal: false);
     }
-    prevAudio = List.from(newAudio);
+    prevAudio = List.from(audio);
 
     // 현재 버퍼를 저장하고 비워줌
-    newAudio.clear();
     audio.clear();
   }
 
