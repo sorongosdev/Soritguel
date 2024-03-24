@@ -49,6 +49,12 @@ class mAudioStreamer {
   double minBufferSize = ZerothDefine.ZEROTH_RATE_44 / 2;
   double? lte; // 장기 에너지
   List<double> newAudio = [];
+  double threshold =
+      ZerothDefine.RESTING_THRESHOLD; // 음성 감지 감도. 데시벨 단위는 음수이기 때문에 이 값이 낮을수록 감지를 더 잘함
+  double lte_ratio = ZerothDefine.LTE_RATIO;
+  double ste_ratio = ZerothDefine.STE_RATIO;
+  double? ste;
+  double? lte_start = -80;
 
   mAudioStreamer() {
     _init();
@@ -57,7 +63,7 @@ class mAudioStreamer {
       // 모든 데이터를 받으면 웹소켓 채널을 닫음
       if (message == "END_OF_DATA") {
         // 서버가 모든 데이터를 받았다는 메시지를 받으면
-        print("EOD");
+        print("vad: EOD");
         channel?.sink.close(); // 웹소켓 채널 닫음
         audio.clear(); // 오디오 데이터
         prevAudio.clear();
@@ -94,7 +100,7 @@ class mAudioStreamer {
     prevSpeakingState = false;
 
     // 샘플링율 - 안드로이드에서만 동작
-    _audioStreamer.sampleRate = 44100;
+    _audioStreamer.sampleRate = sampleRate;
 
     // 오디오 스트림 시작
     audioSubscription =
@@ -123,7 +129,7 @@ class mAudioStreamer {
       // print("eod: useful current audio. send prev, current audio");
       print("vad: current meaningful audio.");
       sendAudio(audioBuffer: prevAudio, isFinal: false);
-      sendAudio(audioBuffer: audio, isFinal: true);
+      sendAudio(audioBuffer: newAudio, isFinal: true);
     }
 
     audioSubscription?.cancel();
@@ -138,54 +144,56 @@ class mAudioStreamer {
     audio.addAll(buffer);
 
     // 버퍼의 데시벨 단위의 STE 계산
-    double ste = getRMS(buffer);
+    ste = getRMS(buffer);
 
-    double threshold = 0.7; // 음성 감지 감도. 데시벨 단위는 음수이기 때문에 이 값이 낮을수록 감지를 더 잘함
+    // if (lte == null) { // 맨 처음의 lte 값을 lte_start에 저장
+    //   lte = ste;
+    //   lte_start = lte; // 맨 처음 lte의 값을 lte_start에 저장
+    // }
+    // else {
+    //   // LTE 업데이트
+    //   lte = lte_ratio * lte! + ste_ratio * ste!; // 지수 가중 평균 이용
+    // }
+    lte = lte_start;
 
-    if (lte == null) {
-      lte = ste;
-    } else {
-      // LTE 업데이트
-      lte = 0.98 * lte! + 0.02 * ste; // 지수 가중 평균 이용
-    }
-
-    if(isSpeaking){
+    if (isSpeaking) {
       newAudio = List.from(audio);
     }
 
     // 말마디 감지 로직
-    if (!isSpeaking && ste > lte! * threshold) {
-      isSpeaking = true;
-      print("vad: 말마디 시작됨");
-    } else if (isSpeaking && ste <= lte! * threshold) {
-      isSpeaking = false;
-      lastSpokeAt = DateTime.now();
-      print("vad: 말마디 끝남");
-
-      pastAudio = List.from(prevAudio);
-      prevAudio = List.from(newAudio);
-      sendAudio(audioBuffer: pastAudio, isFinal: false);
-
-      newAudio.clear();
-      audio.clear();
-      lte = null; // 같이 수정2
-    }
+    updateSpeakingStatus();
 
     checkSilence();
 
     // 오디오 버퍼가 6400씩 증가할 때마다 로그가 한번 찍힘
-    // TODO: false일 때 오디오 버퍼의 일부를 저장해서 말마디 앞부분이 잘리지 않도록? 그냥 저장하면 너무 길다.
-      print("vad: isSpeaking $isSpeaking // STE = $ste // LTE = $lte // audio.length ${audio.length}");
+    print(
+        "vad: isSpeaking $isSpeaking // STE = $ste // LTE = $lte // audio.length ${newAudio.length}");
   }
 
-  ///침묵을 감지하는 함수
-  void checkSilence() {
-    if (!isSpeaking &&
-        lastSpokeAt != null &&
-        DateTime.now().difference(lastSpokeAt!).inSeconds >= 3) {
-      stopRecording();
-      Fluttertoast.showToast(msg: "침묵이 감지되었습니다.");
-      print('vad: silence detected // ${DateTime.now()}');
+  /// 음성 데시벨의 rms에 따라 isSpeaking을 업데이트해주는 메소드
+  void updateSpeakingStatus() {
+    if (!isSpeaking) {
+      threshold = ZerothDefine.RESTING_THRESHOLD; // false일 때 감지 감도는 기본 감지 감도
+      if (ste! > lte! * threshold) {
+        isSpeaking = true;
+        print("vad: 말마디 시작됨");
+      }
+    } else if (isSpeaking) {
+      threshold = ZerothDefine.SPEAKING_THRESHOLD; // 말하는 중일 때는 감도를 낮춰 말마디 감지를 더 잘하게 함(이 값은 감도와 반비례)
+      if (ste! <= lte! * threshold && newAudio.length > 6400 * 2) {
+        isSpeaking = false;
+        lastSpokeAt = DateTime.now();
+        print("vad: 말마디 끝남");
+
+        pastAudio = List.from(prevAudio);
+        prevAudio = List.from(newAudio);
+        sendAudio(audioBuffer: pastAudio, isFinal: false);
+
+        newAudio.clear();
+        audio.clear();
+        // lte = ste!; // 말마디가 끊겼을 때 lte를 조정해줌
+        lte = lte_start; // 말마디가 끊겼을 때 lte를 조정해줌
+      }
     }
   }
 
@@ -196,18 +204,6 @@ class mAudioStreamer {
     double ste = 20 * log(meanSquare) / ln10; // 평균 제곱 에너지 값을 데시벨로 변환
     return ste;
   }
-
-  /// 음성 진폭의 rms에 따라 isSpeaking을 업데이트해주는 메소드
-  void updateSpeakingStatus() {
-    prevSpeakingState = isSpeaking;
-    if (energy! > energy_threshold!) {
-      lastSpokeAt = DateTime.now();
-      isSpeaking = true;
-    } else {
-      isSpeaking = false;
-    }
-  }
-
 
   ///웹소켓 통신으로 실제로 wav를 isolate로 전송
   void sendAudio({required List<double> audioBuffer, required bool isFinal}) {
@@ -252,6 +248,17 @@ class mAudioStreamer {
     channel.stream.listen((message) {
       sendPort.send(message);
     });
+  }
+
+  ///침묵을 감지하는 함수
+  void checkSilence() {
+    if (!isSpeaking &&
+        lastSpokeAt != null &&
+        DateTime.now().difference(lastSpokeAt!).inSeconds >= 3) {
+      stopRecording();
+      Fluttertoast.showToast(msg: "침묵이 감지되었습니다.");
+      print('vad: silence detected // ${DateTime.now()}');
+    }
   }
 
   /// 오디오 PCM을 wav로 바꾸는 함수
