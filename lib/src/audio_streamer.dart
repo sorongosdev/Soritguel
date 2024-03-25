@@ -150,8 +150,6 @@ class mAudioStreamer {
     }
     // 말하는 중일 때
     else if (isSpeaking) {
-      // // newAudio를 업데이트 해줌
-      // newAudio = List.from(audio);
 
       // 문장 감지 - 임계값 이하면 isSpeaking을 false로 변경
       if (energy! <= speaking_threshold && audio.length > 6400 * 2) {
