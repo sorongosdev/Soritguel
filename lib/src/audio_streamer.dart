@@ -13,9 +13,6 @@ import 'dart:typed_data';
 import 'package:web_socket_channel/io.dart';
 import 'dart:isolate';
 
-import 'dart:typed_data';
-import 'dart:math' as math;
-
 class mAudioStreamer {
   ///proivder 관련 변수
   ValueNotifier<bool> isRecording =
@@ -39,9 +36,10 @@ class mAudioStreamer {
   ReceivePort receivePort = ReceivePort(); // 수신 포트 설정
   IOWebSocketChannel? channel; // 웹소켓 채널 객체
 
-  double minBufferSize = ZerothDefine.ZEROTH_RATE_44 / 2; // 44100 샘플링율을 가질 때 최소 버퍼 사이즈는 22050
+  double minBufferSize =
+      ZerothDefine.ZEROTH_RATE_44 / 2; // 44100 샘플링율을 가질 때 최소 버퍼 사이즈는 22050
   double speaking_threshold = ZerothDefine.SPEAKING_THRESHOLD; // 문장 감지 기준 데시벨
-  double? buffer_cut_threshold; // 문장 시작 처음의 에너지를 저장하는 변수
+  // double? buffer_cut_threshold; // 문장 시작 처음의 에너지를 저장하는 변수
   double buffer_cut_ratio = ZerothDefine.BUFFER_CUT_RATIO; // 단어 감지 감도 계수
   double? energy; // 현재 버퍼의 에너지
 
@@ -52,15 +50,14 @@ class mAudioStreamer {
       // 모든 데이터를 받으면 웹소켓 채널을 닫음
       if (message == "END_OF_DATA") {
         // 서버가 모든 데이터를 받았다는 메시지를 받으면
-        print("vad: EOD");
+        print("revert: EOD");
         channel?.sink.close(); // 웹소켓 채널 닫음
-        audio.clear(); // 오디오 데이터
-        prevAudio!.clear();
+        // audio.clear(); // 오디오 데이터
+        // prevAudio!.clear();
         receivedText.value = List.empty(); // 녹음이 중지되면 서버에서 받아오기 위해 사용했던 변수를 비워줌
       } else {
         // 서버로부터 메시지를 받아 저장
         receivedText.value = List.empty(); // 실시간으로 받아오고 있기 때문에, 받아올 때마다 비워주어야함.
-        // print("eod: msg $message");
         receivedText.value = List.from(receivedText.value)..add(message);
       }
     });
@@ -101,19 +98,13 @@ class mAudioStreamer {
 
   /// 오디오 샘플링을 멈추고 변수를 초기화
   Future<void> stopRecording() async {
-    // 현재 오디오 의미 없을 때 이전 오디오만 전송
-    if (audio.length < minBufferSize) {
-      print("vad: current useless audio.");
-      sendAudio(audioBuffer: prevAudio!, isFinal: true);
-    }
-    // 현재 오디오 의미 있을 때 현재 오디오를 전송
-    else {
-      print("vad: current meaningful audio.");
-      sendAudio(audioBuffer: prevAudio!, isFinal: false);
-      sendAudio(audioBuffer: audio, isFinal: true);
+    // 일정 버퍼 사이즈가 안되었어도 녹음이 중지됐으므로 나머지 오디오를 전송
+    if (audio.isNotEmpty) {
+      sendAudio(isFinal: true);
     }
 
     audioSubscription?.cancel();
+    audio.clear(); // 오디오 데이터
     lastSpokeAt = null;
     isRecording.value = false;
   }
@@ -123,110 +114,54 @@ class mAudioStreamer {
     // 버퍼에 음성 데이터를 추가
     audio.addAll(buffer);
 
-    // 버퍼의 데시벨 단위의 STE 계산
-    energy = getRMS(buffer);
-
     // 말마디 감지 로직
-    updateSpeakingStatus();
+    // 일정 버퍼 사이즈를 넘어가면 서버에 wav 파일을 전송
+    if (audio.length >= 44100 * 3) {
+      sendAudio(isFinal: false);
+    }
+
+    double threshold = 0.1; // 침묵 기준 진폭
+    double maxAmp = buffer.reduce(max);
+
+    if (maxAmp > threshold && !isSpeaking) {
+      // 말하는 중인지 판단
+      isSpeaking = true;
+      lastSpokeAt = DateTime.now();
+    } else {
+      isSpeaking = false;
+    }
 
     checkSilence();
-
-    // 오디오 버퍼가 6400씩 증가할 때마다 로그가 한번 찍힘
-    print(
-        "vad: isSpeaking $isSpeaking // energy $energy // audio.length ${audio.length}");
   }
 
-  /// 음성 rms의 데시벨에 따라 isSpeaking을 업데이트하고, 문장과 단어를 감지하는 함수
-  void updateSpeakingStatus() {
-    // 말하지 않는 중일 때
-    if (!isSpeaking) {
-      audio.clear(); // 오디오를 비워줌으로써 메모리 관리
-      // 임계값 이상이면 isSpeaking을 true로 변경
-      if (energy! > speaking_threshold) {
-        isSpeaking = true;
-        print("vad: 문장 시작됨");
-        buffer_cut_threshold = energy; // 말한 직후의 에너지를 저장
-      }
-    }
-    // 말하는 중일 때
-    else if (isSpeaking) {
+  ///웹소켓 통신으로 실제로 pcm data를 isolate로 전송
+  void sendAudio({required bool isFinal}) {
+    print("revert: sendAudio");
+    String base64Data = transformToBase64(audio);
 
-      // 문장 감지 - 임계값 이하면 isSpeaking을 false로 변경
-      if (energy! <= speaking_threshold && audio.length > 6400 * 2) {
-        print("vad: 문장 끝남");
+    // 웹소켓을 통해 wav 전송
+    Isolate.spawn(sendOverWebSocket, {
+      'base64Data': base64Data,
+      'sendPort': receivePort.sendPort,
+      'isFinal': isFinal, // 마지막 데이터인지 나타내는 변수 추가
+    });
 
-        isSpeaking = false;
-        lastSpokeAt = DateTime.now();
-
-        updateBuffer();
-      }
-
-      // 단어 감지 - 단어를 시작했던 에너지보다 작은 에너지를 가지면서, 일정 오디오 크기 이상일 때 오디오를 전송하고 버퍼를 비워줌
-      if(energy! < buffer_cut_threshold! * buffer_cut_ratio && audio.length > sampleRate){ // 계수를 곱해서 값 스케일링 할 것
-        print("vad: 단어 끝남");
-        updateBuffer();
-      }
-    }
-  }
-
-  /// 문장이나 단어가 끝나면 버퍼를 업데이트하고 이전에 저장된 버퍼를 전송하는 함수
-  void updateBuffer(){
-    if (prevAudio != null) {
-      print("vad: prevAudio is not null");
-
-      pastAudio = List.from(prevAudio!);
-      sendAudio(audioBuffer: pastAudio!, isFinal: false);
-    }
-    prevAudio = List.from(audio);
-
-    // 현재 버퍼를 저장하고 비워줌
+    // 버퍼를 비워줌
     audio.clear();
-  }
-
-  /// 오디오 버퍼를 받아 데시벨로 리턴
-  double getRMS(List<double> buffer) {
-    double sumOfSquares = buffer.fold(0.0, (sum, value) => sum + value * value);
-    double meanSquare = sumOfSquares / buffer.length;
-    double energy = 20 * log(meanSquare) / ln10; // 평균 제곱 에너지 값을 데시벨로 변환
-    return energy;
-  }
-
-  ///웹소켓 통신으로 실제로 wav를 isolate로 전송
-  void sendAudio({required List<double> audioBuffer, required bool isFinal}) {
-    // 원시 오디오 데이터인 PCM을 wav로 변환
-    var wavData = transformToWav(audioBuffer);
-
-    print("vad: sendAudio bufferSize ${audioBuffer.length}");
-
-    // minBufferSize 이상일 때만 전송
-    if (audioBuffer.isNotEmpty) {
-      print("vad: sendAudio bufferSize in if ${audioBuffer.length} isFinal $isFinal");
-
-      // 웹소켓을 통해 wav 전송
-
-      Isolate.spawn(sendOverWebSocket, {
-        'wavData': wavData,
-        'sendPort': receivePort.sendPort,
-        'isFinal': isFinal, // 마지막 데이터인지 나타내는 변수 추가
-      });
-    }
   }
 
   ///웹소켓 통신 정보를 stream에 추가하고, 서버로부터 응답을 받는 부분
   static void sendOverWebSocket(Map<String, dynamic> args) async {
-    final wavData = args['wavData'];
+    final base64Data = args['base64Data'];
     final sendPort = args['sendPort'];
     final isFinal = args['isFinal'];
 
     //채널 설정
     final channel = IOWebSocketChannel.connect(ZerothDefine.MY_URL_test);
 
-    //wav 파일을 base64로 인코딩
-    var base64WavData = base64Encode(wavData);
-
     // stream에 데이터를 추가
     channel.sink.add(jsonEncode({
-      'wavData': base64WavData,
+      'base64Data': base64Data,
       'isFinal': isFinal,
     }));
 
@@ -236,6 +171,23 @@ class mAudioStreamer {
     });
   }
 
+  // List<double> 형태의 오디오 버퍼를 받아 base64로 인코딩 해주는 함수
+  String transformToBase64(List<double> audio) {
+    // double 값을 16비트 정수로 변환하기 위한 ByteData 객체 생성
+    ByteData byteData = ByteData(audio.length * 2); // 16비트 정수는 2바이트
+
+    for (int i = 0; i < audio.length; i++) {
+      // 각 double 값을 16비트 정수로 변환하여 ByteData에 설정
+      // 여기서 double 값이 -1.0에서 1.0 사이 (일반적인 오디오 데이터의 범위)
+      int sample = (audio[i] * 32767.0).round().clamp(-32768, 32767); // double을 16비트 정수로 변환
+      byteData.setInt16(i * 2, sample, Endian.little);
+    }
+
+    Uint8List bytes = byteData.buffer.asUint8List(); // ByteData를 Uint8List로 변환
+
+    return base64Encode(bytes); // Uint8List를 base64로 인코딩
+  }
+
   ///침묵을 감지하는 함수
   void checkSilence() {
     if (!isSpeaking &&
@@ -243,51 +195,8 @@ class mAudioStreamer {
         DateTime.now().difference(lastSpokeAt!).inSeconds >= 3) {
       stopRecording();
       Fluttertoast.showToast(msg: "침묵이 감지되었습니다.");
-      print('vad: silence detected // ${DateTime.now()}');
+      print('revert: silence detected // ${DateTime.now()}');
     }
-  }
-
-  /// 오디오 PCM을 wav로 바꾸는 함수
-  Uint8List transformToWav(List<double> pcmData) {
-    int numSamples = pcmData.length;
-    int numChannels = ZerothDefine.ZEROTH_MONO;
-    int sampleSize = 2; // 16 bits#########
-
-    int byteRate = sampleRate * numChannels * sampleSize;
-
-    var header = ByteData(44);
-    var bData = ByteData(numSamples * sampleSize);
-
-    // PCM 데이터를 Int16 형식으로 변환
-    for (int i = 0; i < numSamples; ++i) {
-      bData.setInt16(
-          i * sampleSize, (pcmData[i] * 32767).toInt(), Endian.little);
-    }
-
-    // RIFF header
-    header.setUint32(0, 0x46464952, Endian.little); // "RIFF"
-    header.setUint32(4, 36 + numSamples * sampleSize, Endian.little);
-    header.setUint32(8, 0x45564157, Endian.little); // "WAVE"
-
-    // fmt subchunk
-    header.setUint32(12, 0x20746D66, Endian.little); // "fmt "
-    header.setUint32(16, 16, Endian.little); // SubChunk1Size
-    header.setUint16(20, 1, Endian.little); // AudioFormat
-    header.setUint16(22, numChannels, Endian.little);
-    header.setUint32(24, sampleRate, Endian.little);
-    header.setUint32(28, byteRate, Endian.little);
-    header.setUint16(32, numChannels * sampleSize, Endian.little); // BlockAlign
-    header.setUint16(34, 8 * sampleSize, Endian.little); // BitsPerSample
-
-    // data subchunk
-    header.setUint32(36, 0x61746164, Endian.little); // "data"
-    header.setUint32(40, numSamples * sampleSize, Endian.little);
-
-    var wavData = Uint8List(44 + numSamples * sampleSize);
-    wavData.setAll(0, header.buffer.asUint8List());
-    wavData.setAll(44, bData.buffer.asUint8List());
-
-    return wavData;
   }
 
   /// 에러 핸들러
@@ -295,5 +204,4 @@ class mAudioStreamer {
     isRecording.value = false; //에러 발생시 녹음 중지
     print(error);
   }
-
 }

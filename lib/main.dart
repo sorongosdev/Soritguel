@@ -6,8 +6,6 @@ import 'screens/mic_icon.dart';
 import 'screens/description_text.dart';
 import 'screens/my_text_field.dart';
 import 'screens/bottom_button_row.dart';
-
-// import 'audio_recorder.dart';
 import 'src/audio_streamer.dart';
 import 'models/text_size_model.dart';
 import 'models/text_store_model.dart';
@@ -17,7 +15,7 @@ void main() {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(
-          create: (context) => TextSizeModel(),
+          create: (context) =>  TextSizeModel(),
         ),
         ChangeNotifierProvider(
           create: (context) => TextStoreModel(),
@@ -25,7 +23,7 @@ void main() {
       ],
       child: MyApp(),
     ),
-  );
+);
 }
 
 class MyApp extends StatelessWidget {
