@@ -141,7 +141,7 @@ class mAudioStreamer {
 
     // 웹소켓을 통해 wav 전송
     Isolate.spawn(sendOverWebSocket, {
-      'base64Data': base64Data,
+      'wavData': base64Data,
       'sendPort': receivePort.sendPort,
       'isFinal': isFinal, // 마지막 데이터인지 나타내는 변수 추가
     });
