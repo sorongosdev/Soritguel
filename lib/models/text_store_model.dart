@@ -5,7 +5,6 @@ import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 
 class TextStoreModel with ChangeNotifier {
-
   // 텍스트필드의 텍스트를 읽어오기 위한 컨트롤러
   late TextEditingController _controller;
 
@@ -17,7 +16,6 @@ class TextStoreModel with ChangeNotifier {
 
   /// 앱바에서 저장버튼을 누르면 텍스트필드의 텍스트를 텍스트파일에 저장
   Future<void> saveText() async {
-
     Directory? directory;
     String text = _controller.text;
 
@@ -46,5 +44,76 @@ class TextStoreModel with ChangeNotifier {
       toastLength: Toast.LENGTH_SHORT,
       gravity: ToastGravity.BOTTOM,
     );
+  }
+
+// 파일을 불러와 다이얼로그로 보여주는 함수
+  Future<void> loadAndShowText(BuildContext context) async {
+    Directory? directory;
+
+    // 안드로이드와 iOS에서 다르게 처리
+    if (Platform.isAndroid) {
+      // 안드로이드: 외부 저장소 사용
+      directory = await getExternalStorageDirectory();
+    } else if (Platform.isIOS) {
+      // iOS: 앱 문서 디렉토리 사용
+      directory = await getApplicationDocumentsDirectory();
+    }
+
+    // 파일 목록을 가져옵니다.
+    List<FileSystemEntity> files = directory!.listSync();
+
+    // txt 파일 목록만 필터링
+    List<FileSystemEntity> txtFiles =
+        files.where((file) => file.path.endsWith('.txt')).toList();
+
+    // 파일 이름만 추출
+    List<String> fileNames = txtFiles.map((file) => file.path.split('/').last).toList();
+
+    // txt 파일이 있다면 첫 번째 파일을 읽어서 다이얼로그로 보여줌
+    if (txtFiles.isNotEmpty) {
+      String text = await File(txtFiles[0].path).readAsString();
+
+      // 다이얼로그를 띄워서 파일 내용을 보여줌
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: Text('파일 목록'),
+            content: SingleChildScrollView(
+              child: ListBody(
+                children: fileNames.map((fileName) => Text(fileName)).toList(),
+              ),
+            ),
+            actions: <Widget>[
+              TextButton(
+                child: Text('닫기'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+            ],
+          );
+        },
+      );
+    } else {
+      // 텍스트 파일이 없을 경우
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: Text('오류'),
+            content: Text('저장된 텍스트 파일이 없습니다.'),
+            actions: <Widget>[
+              TextButton(
+                child: Text('닫기'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+            ],
+          );
+        },
+      );
+    }
   }
 }

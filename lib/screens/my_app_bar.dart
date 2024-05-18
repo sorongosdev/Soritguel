@@ -29,9 +29,12 @@ class MyAppBar extends StatelessWidget implements PreferredSizeWidget{
                 // Navigator.pop(context); // 팝업 메뉴를 자동으로 닫음
               },
             ),
-            const PopupMenuItem<String>(
+            PopupMenuItem<String>(
               value: '불러오기',
               child: Text('불러오기'),
+              onTap: () {
+                Provider.of<TextStoreModel>(context, listen: false).loadAndShowText(context);
+              },
             ),
             const PopupMenuItem<String>(
               value: '공유하기',
