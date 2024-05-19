@@ -152,7 +152,7 @@ class mAudioStreamer {
 
   ///웹소켓 통신 정보를 stream에 추가하고, 서버로부터 응답을 받는 부분
   static void sendOverWebSocket(Map<String, dynamic> args) async {
-    final base64Data = args['base64Data'];
+    final wavData = args['wavData'];
     final sendPort = args['sendPort'];
     final isFinal = args['isFinal'];
 
@@ -161,7 +161,7 @@ class mAudioStreamer {
 
     // stream에 데이터를 추가
     channel.sink.add(jsonEncode({
-      'base64Data': base64Data,
+      'wavData': wavData,
       'isFinal': isFinal,
     }));
 
