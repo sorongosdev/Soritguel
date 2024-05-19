@@ -66,54 +66,46 @@ class TextStoreModel with ChangeNotifier {
     List<FileSystemEntity> txtFiles =
         files.where((file) => file.path.endsWith('.txt')).toList();
 
-    // 파일 이름만 추출
-    List<String> fileNames = txtFiles.map((file) => file.path.split('/').last).toList();
+    if (!context.mounted) return;
 
-    // txt 파일이 있다면 첫 번째 파일을 읽어서 다이얼로그로 보여줌
-    if (txtFiles.isNotEmpty) {
-      String text = await File(txtFiles[0].path).readAsString();
-
-      // 다이얼로그를 띄워서 파일 내용을 보여줌
-      showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: Text('파일 목록'),
-            content: SingleChildScrollView(
-              child: ListBody(
-                children: fileNames.map((fileName) => Text(fileName)).toList(),
-              ),
+    // 다이얼로그를 띄워서 파일 목록을 보여줌
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('파일 목록'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: txtFiles.length,
+              itemBuilder: (context, index) {
+                // 파일 이름만 추출
+                String fileName = txtFiles[index].path.split('/').last;
+                return ListTile(
+                  title: Text(fileName),
+                  onTap: () async {
+                    // 파일을 읽고 로그에 내용을 출력
+                    String content =
+                        await File(txtFiles[index].path).readAsString();
+                    _controller.text = content.toString();
+                    if (!context.mounted) return;
+                    Navigator.of(context).pop(); // 다이얼로그를 닫음
+                  },
+                );
+              },
             ),
-            actions: <Widget>[
-              TextButton(
-                child: Text('닫기'),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-              ),
-            ],
-          );
-        },
-      );
-    } else {
-      // 텍스트 파일이 없을 경우
-      showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: Text('오류'),
-            content: Text('저장된 텍스트 파일이 없습니다.'),
-            actions: <Widget>[
-              TextButton(
-                child: Text('닫기'),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-              ),
-            ],
-          );
-        },
-      );
-    }
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('닫기'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 }
