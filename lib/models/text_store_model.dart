@@ -59,13 +59,14 @@ class TextStoreModel with ChangeNotifier {
       directory = await getApplicationDocumentsDirectory();
     }
 
-    // 파일 목록을 가져옵니다.
+    // 파일 목록을 가져오기
     List<FileSystemEntity> files = directory!.listSync();
 
-    // txt 파일 목록만 필터링
+    // txt 파일 목록만 필터링ㅡ
     List<FileSystemEntity> txtFiles =
         files.where((file) => file.path.endsWith('.txt')).toList();
 
+    // context가 mount 되어있을 때만 다이얼로그를 보여줌
     if (!context.mounted) return;
 
     // 다이얼로그를 띄워서 파일 목록을 보여줌
@@ -85,7 +86,6 @@ class TextStoreModel with ChangeNotifier {
                 return ListTile(
                   title: Text(fileName),
                   onTap: () async {
-                    // 파일을 읽고 로그에 내용을 출력
                     String content =
                         await File(txtFiles[index].path).readAsString();
                     _controller.text = content.toString();
