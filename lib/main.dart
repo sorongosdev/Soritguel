@@ -61,26 +61,32 @@ class MyWidgetState extends State<MyWidget> {
     final textFieldMaxHeight = MediaQuery.of(context).size.height * 0.4;
     final buttonRowSideMargin = MediaQuery.of(context).size.width * 0.05;
 
-    return Scaffold(
-      appBar: MyAppBar(),
-      backgroundColor: Colors.white,
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: <Widget>[
-          MicIcon(
-            micTopMargin: micTopMargin,
-            audioStreamer: audioStreamer, // audioStreamer 인스턴스 전달
-            isRecording: audioStreamer.isRecording, // isRecording 전달
-          ),
-          DescriptionText(),
-          MyTextField(
-            textFieldTopMargin: textFieldTopMargin,
-            textFieldSideMargin: textFieldSideMargin,
-            textFieldMaxHeight: textFieldMaxHeight,
-            receivedText: audioStreamer.receivedText, // receivedText 전달
-          ),
-          BottomButtonRow(buttonRowSideMargin: buttonRowSideMargin)
-        ],
+    return GestureDetector(
+      onTap: () {
+        // 현재 포커스를 제거하여 키보드를 숨김
+        FocusScope.of(context).requestFocus(new FocusNode());
+      },
+      child: Scaffold(
+        appBar: MyAppBar(),
+        backgroundColor: Colors.white,
+        body: Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: <Widget>[
+            MicIcon(
+              micTopMargin: micTopMargin,
+              audioStreamer: audioStreamer, // audioStreamer 인스턴스 전달
+              isRecording: audioStreamer.isRecording, // isRecording 전달
+            ),
+            DescriptionText(),
+            MyTextField(
+              textFieldTopMargin: textFieldTopMargin,
+              textFieldSideMargin: textFieldSideMargin,
+              textFieldMaxHeight: textFieldMaxHeight,
+              receivedText: audioStreamer.receivedText, // receivedText 전달
+            ),
+            BottomButtonRow(buttonRowSideMargin: buttonRowSideMargin)
+          ],
+        ),
       ),
     );
   }
