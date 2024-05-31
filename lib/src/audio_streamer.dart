@@ -6,6 +6,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:audio_streamer/audio_streamer.dart';
 import 'package:flutter_project/constants/ZerothDefine.dart';
+import 'package:flutter_project/src/widgets/waveform_painter.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -26,16 +27,14 @@ class mAudioStreamer {
   dynamic _audioStreamer; // 오디오스트리머 객체
 
   int sampleRate = ZerothDefine.ZEROTH_RATE_44; // 샘플링율
-  List<double>? prevAudio; // audio 이전의 버퍼
-  List<double>? pastAudio; // prevAudio 이전의 버퍼
   List<double> audio = []; // 현재 버퍼
+  ValueNotifier<List<double>> audioDataNotifier = ValueNotifier([]); // waveform_painter에서 변화를 감지
 
   StreamSubscription<List<double>>? audioSubscription;
   DateTime? lastSpokeAt; // 마지막 말한 시점의 시간
 
   ReceivePort receivePort = ReceivePort(); // 수신 포트 설정
   IOWebSocketChannel? channel; // 웹소켓 채널 객체
-  double? energy; // 현재 버퍼의 에너지
 
   mAudioStreamer() {
     _init();
@@ -46,13 +45,11 @@ class mAudioStreamer {
         // 서버가 모든 데이터를 받았다는 메시지를 받으면
         print("loadTxt: EOD");
         channel?.sink.close(); // 웹소켓 채널 닫음
-        // audio.clear(); // 오디오 데이터
-        // prevAudio!.clear();
         receivedText.value = List.empty(); // 녹음이 중지되면 서버에서 받아오기 위해 사용했던 변수를 비워줌
       } else {
-        // 서버로부터 메시지를 받아 저장
-        receivedText.value = List.empty(); // 실시간으로 받아오고 있기 때문에, 받아올 때마다 비워주어야함.
-        receivedText.value = List.from(receivedText.value)..add(message);
+        // 실시간으로 받아오고 있기 때문에, 받아올 때마다 비워주어야함.
+        receivedText.value = List.empty();
+        receivedText.value = [...receivedText.value, message];
       }
     });
   }
@@ -107,6 +104,7 @@ class mAudioStreamer {
   void onAudio(List<double> buffer) async {
     // 버퍼에 음성 데이터를 추가
     audio.addAll(buffer);
+    // audioDataNotifier.value = List.from(audio);
 
     // 말마디 감지 로직
     // 일정 버퍼 사이즈를 넘어가면 서버에 wav 파일을 전송
@@ -116,6 +114,9 @@ class mAudioStreamer {
 
     double threshold = 0.1; // 침묵 기준 진폭
     double maxAmp = buffer.reduce(max);
+    audioDataNotifier.value.add(maxAmp);
+    // ValueNotifier에 변경사항을 알리기 위해 새로운 리스트를 할당
+    audioDataNotifier.value = List.from(audioDataNotifier.value);
 
     if (maxAmp > threshold && !isSpeaking) {
       // 말하는 중인지 판단

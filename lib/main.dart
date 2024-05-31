@@ -1,5 +1,6 @@
 ///main.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_project/src/widgets/waveform_painter.dart';
 import 'package:provider/provider.dart';
 import 'screens/my_app_bar.dart';
 import 'screens/mic_icon.dart';
@@ -15,7 +16,7 @@ void main() {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(
-          create: (context) =>  TextSizeModel(),
+          create: (context) => TextSizeModel(),
         ),
         ChangeNotifierProvider(
           create: (context) => TextStoreModel(),
@@ -23,7 +24,7 @@ void main() {
       ],
       child: MyApp(),
     ),
-);
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -55,11 +56,15 @@ class MyWidgetState extends State<MyWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final micTopMargin = MediaQuery.of(context).size.height * 0.03;
-    final textFieldTopMargin = MediaQuery.of(context).size.height * 0.03;
-    final textFieldSideMargin = MediaQuery.of(context).size.width * 0.05;
-    final textFieldMaxHeight = MediaQuery.of(context).size.height * 0.4;
-    final buttonRowSideMargin = MediaQuery.of(context).size.width * 0.05;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    final micTopMargin = screenHeight * 0.03;
+    final textFieldTopMargin = screenHeight * 0.03;
+    final textFieldSideMargin = screenWidth * 0.05;
+    final textFieldMaxHeight = screenHeight * 0.4;
+    final buttonRowSideMargin = screenWidth * 0.05;
+    final waveFormHeight = screenHeight * 0.1;
 
     return GestureDetector(
       onTap: () {
@@ -77,7 +82,12 @@ class MyWidgetState extends State<MyWidget> {
               audioStreamer: audioStreamer, // audioStreamer 인스턴스 전달
               isRecording: audioStreamer.isRecording, // isRecording 전달
             ),
-            DescriptionText(),
+            const DescriptionText(),
+            WaveformView(
+              audioStreamer: audioStreamer,
+              waveFormHeight: waveFormHeight,
+              waveFormWidth: screenWidth,
+            ),
             MyTextField(
               textFieldTopMargin: textFieldTopMargin,
               textFieldSideMargin: textFieldSideMargin,
