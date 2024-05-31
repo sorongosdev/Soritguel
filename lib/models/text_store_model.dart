@@ -4,8 +4,10 @@ import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 
+import 'package:share_plus/share_plus.dart';
+
 class TextStoreModel with ChangeNotifier {
-  // 텍스트필드의 텍스트를 읽어오기 위한 컨트롤러
+  /// 텍스트필드의 텍스트를 읽어오기 위한 컨트롤러
   late TextEditingController _controller;
 
   /// 텍스트필드의 텍스트를 읽어오기 위한 컨트롤러 지정
@@ -46,7 +48,7 @@ class TextStoreModel with ChangeNotifier {
     );
   }
 
-// 파일을 불러와 다이얼로그로 보여주는 함수
+  /// 파일을 불러와 다이얼로그로 보여주는 함수
   Future<void> loadAndShowText(BuildContext context) async {
     Directory? directory;
 
@@ -107,5 +109,10 @@ class TextStoreModel with ChangeNotifier {
         );
       },
     );
+  }
+
+  /// 공유하기를 누르면 텍스트필드의 텍스트를 외부로 공유함
+  Future<void> shareText(BuildContext context) async{
+    Share.share(_controller.text);
   }
 }

@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/text_store_model.dart'; // TextModel을 import
+import '../models/text_store_model.dart';
 
-class MyAppBar extends StatelessWidget implements PreferredSizeWidget{
+class MyAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
-  Size get preferredSize => Size.fromHeight(kToolbarHeight); // main의 Scaffold에서 리턴값으로 필요
+  Size get preferredSize =>
+      Size.fromHeight(kToolbarHeight); // main의 Scaffold에서 리턴값으로 필요
 
   @override
   Widget build(BuildContext context) {
@@ -15,8 +16,7 @@ class MyAppBar extends StatelessWidget implements PreferredSizeWidget{
       actions: <Widget>[
         PopupMenuButton<String>(
           icon: Icon(Icons.more_vert), // 더보기 아이콘
-          itemBuilder: (BuildContext context) =>
-          <PopupMenuEntry<String>>[
+          itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
             const PopupMenuItem<String>(
               value: '새로시작',
               child: Text('새로시작'),
@@ -33,12 +33,16 @@ class MyAppBar extends StatelessWidget implements PreferredSizeWidget{
               value: '불러오기',
               child: Text('불러오기'),
               onTap: () {
-                Provider.of<TextStoreModel>(context, listen: false).loadAndShowText(context);
+                Provider.of<TextStoreModel>(context, listen: false)
+                    .loadAndShowText(context);
               },
             ),
-            const PopupMenuItem<String>(
+            PopupMenuItem<String>(
               value: '공유하기',
               child: Text('공유하기'),
+              onTap: () {
+                Provider.of<TextStoreModel>(context,listen: false).shareText(context);
+              },
             ),
           ],
         ),

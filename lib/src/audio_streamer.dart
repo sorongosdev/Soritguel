@@ -35,12 +35,6 @@ class mAudioStreamer {
 
   ReceivePort receivePort = ReceivePort(); // 수신 포트 설정
   IOWebSocketChannel? channel; // 웹소켓 채널 객체
-
-  double minBufferSize =
-      ZerothDefine.ZEROTH_RATE_44 / 2; // 44100 샘플링율을 가질 때 최소 버퍼 사이즈는 22050
-  double speaking_threshold = ZerothDefine.SPEAKING_THRESHOLD; // 문장 감지 기준 데시벨
-  // double? buffer_cut_threshold; // 문장 시작 처음의 에너지를 저장하는 변수
-  double buffer_cut_ratio = ZerothDefine.BUFFER_CUT_RATIO; // 단어 감지 감도 계수
   double? energy; // 현재 버퍼의 에너지
 
   mAudioStreamer() {
@@ -50,7 +44,7 @@ class mAudioStreamer {
       // 모든 데이터를 받으면 웹소켓 채널을 닫음
       if (message == "END_OF_DATA") {
         // 서버가 모든 데이터를 받았다는 메시지를 받으면
-        print("revert: EOD");
+        print("loadTxt: EOD");
         channel?.sink.close(); // 웹소켓 채널 닫음
         // audio.clear(); // 오디오 데이터
         // prevAudio!.clear();
@@ -99,9 +93,9 @@ class mAudioStreamer {
   /// 오디오 샘플링을 멈추고 변수를 초기화
   Future<void> stopRecording() async {
     // 일정 버퍼 사이즈가 안되었어도 녹음이 중지됐으므로 나머지 오디오를 전송
-    if (audio.isNotEmpty) {
-      sendAudio(isFinal: true);
-    }
+    // if (audio.isNotEmpty) {
+    //   sendAudio(isFinal: true);
+    // }
 
     audioSubscription?.cancel();
     audio.clear(); // 오디오 데이터
@@ -130,6 +124,8 @@ class mAudioStreamer {
     } else {
       isSpeaking = false;
     }
+
+    print("waveform: amplitude $maxAmp");
 
     checkSilence();
   }
