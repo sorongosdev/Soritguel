@@ -11,12 +11,12 @@ class MyAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     return AppBar(
-      title: Text('STT'),
+      title: const Text('STT'),
       centerTitle: true,
       backgroundColor: Colors.blue,
       actions: <Widget>[
         PopupMenuButton<String>(
-          icon: Icon(Icons.more_vert), // 더보기 아이콘
+          icon: const Icon(Icons.more_vert), // 더보기 아이콘
           itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
             PopupMenuItem<String>(
               value: '새로시작',
