@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_project/constants/TagConst.dart';
+import 'package:flutter_project/src/audio_streamer.dart';
+import 'package:flutter_project/src/widgets/waveform_painter.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:provider/provider.dart';
 import 'dart:io';
 
 import 'package:share_plus/share_plus.dart';
 
+/// 팝업 메뉴 관련, 텍스트 컨트롤러를 이용하는 모델
 class TextStoreModel with ChangeNotifier {
   /// 텍스트필드의 텍스트를 읽어오기 위한 컨트롤러
   late TextEditingController _controller;
@@ -16,7 +21,7 @@ class TextStoreModel with ChangeNotifier {
     notifyListeners();
   }
 
-  /// 앱바에서 저장버튼을 누르면 텍스트필드의 텍스트를 텍스트파일에 저장
+  /// 저장 - 누르면 텍스트필드의 텍스트를 텍스트파일에 저장
   Future<void> saveText() async {
     Directory? directory;
     String text = _controller.text;
@@ -48,7 +53,7 @@ class TextStoreModel with ChangeNotifier {
     );
   }
 
-  /// 파일을 불러와 다이얼로그로 보여주는 함수
+  /// 불러오기 - 파일을 불러와 다이얼로그로 보여주는 함수
   Future<void> loadAndShowText(BuildContext context) async {
     Directory? directory;
 
@@ -111,8 +116,14 @@ class TextStoreModel with ChangeNotifier {
     );
   }
 
-  /// 공유하기를 누르면 텍스트필드의 텍스트를 외부로 공유함
-  Future<void> shareText(BuildContext context) async{
+  /// 공유하기 - 텍스트필드의 텍스트를 외부로 공유함
+  Future<void> shareText() async{
     Share.share(_controller.text);
+  }
+
+  /// 새로시작 - 텍스트필드의 텍스트를 제거하고 음성 파형 초기화
+  Future<void> freshStart() async{
+    //텍스트 필드 텍스트 제거
+    _controller.clear();
   }
 }

@@ -1,5 +1,7 @@
 ///main.dart
+import 'package:audio_streamer/audio_streamer.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_project/models/waveform_model.dart';
 import 'package:flutter_project/src/widgets/waveform_painter.dart';
 import 'package:provider/provider.dart';
 import 'screens/my_app_bar.dart';
@@ -21,6 +23,9 @@ void main() {
         ChangeNotifierProvider(
           create: (context) => TextStoreModel(),
         ),
+        ChangeNotifierProvider(
+          create: (context) => WaveformModel(),
+        )
       ],
       child: MyApp(),
     ),

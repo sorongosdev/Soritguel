@@ -3,18 +3,21 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_project/src/audio_streamer.dart';
 import 'package:flutter_project/src/utils/list_extensions.dart';
+import 'package:provider/provider.dart';
+
+import '../../models/waveform_model.dart';
 
 class WaveformView extends StatefulWidget {
   final mAudioStreamer audioStreamer;
   final waveFormWidth;
   final waveFormHeight;
 
-  WaveformView({
-    Key? key,
+  const WaveformView({
+    super.key,
     required this.audioStreamer,
     required this.waveFormHeight,
     required this.waveFormWidth,
-  }) : super(key: key);
+  });
 
   @override
   _WaveformViewState createState() => _WaveformViewState();
@@ -29,7 +32,10 @@ class _WaveformViewState extends State<WaveformView> {
   void initState() {
     super.initState();
     // audioDataNotifier의 리스너 추가
-    widget.audioStreamer.audioDataNotifier.addListener(_updateWaveform);
+    final model = Provider.of<WaveformModel>(context, listen: false);
+    widget.audioStreamer.audioDataNotifier.addListener(() {
+      model.updateWaveform(widget.audioStreamer.audioDataNotifier.value);
+    });
   }
 
   @override
@@ -44,37 +50,29 @@ class _WaveformViewState extends State<WaveformView> {
     setState(() {
       ampList = widget.audioStreamer.audioDataNotifier.value;
       tick++;
-      print("waveform: ampList size ${ampList.length}");
     });
   }
 
-  // void replayAmplitude() {
-  //   setState(() {
-  //     tick++;
-  //   });
-  // }
-
-  // void clearData() {
-  //   setState(() {
-  //     ampList.clear();
-  //   });
-  // }
-  //
-  // void clearWave() {
-  //   setState(() {
-  //     ampList.clear();
-  //     tick = 0;
-  //   });
-  // }
+  /// 파형을 지우는 함수
+  void clearWave() {
+    setState(() {
+      ampList.clear();
+      tick = 0;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(
-      painter: WaveformPainter(ampList, rectWidth, tick),
-      child: Container(
-        width: widget.waveFormWidth,
-        height: widget.waveFormHeight,
-      ),
+    return Consumer<WaveformModel>(
+      builder: (context, model, child) {
+        return CustomPaint(
+          painter: WaveformPainter(model.ampList, rectWidth, model.tick),
+          child: Container(
+            width: widget.waveFormWidth,
+            height: widget.waveFormHeight,
+          ),
+        );
+      },
     );
   }
 }
@@ -95,8 +93,6 @@ class WaveformPainter extends CustomPainter {
     if (amps.length > maxRect) {
       amps = amps.takeLast(maxRect).toList();
     }
-
-    print("waveform: amps $amps");
 
     for (int i = 0; i < amps.length; i++) {
       final double amplitude = amps[i];

@@ -5,8 +5,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:audio_streamer/audio_streamer.dart';
+import 'package:flutter_project/constants/TagConst.dart';
 import 'package:flutter_project/constants/ZerothDefine.dart';
-import 'package:flutter_project/src/widgets/waveform_painter.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -43,7 +43,6 @@ class mAudioStreamer {
       // 모든 데이터를 받으면 웹소켓 채널을 닫음
       if (message == "END_OF_DATA") {
         // 서버가 모든 데이터를 받았다는 메시지를 받으면
-        print("loadTxt: EOD");
         channel?.sink.close(); // 웹소켓 채널 닫음
         receivedText.value = List.empty(); // 녹음이 중지되면 서버에서 받아오기 위해 사용했던 변수를 비워줌
       } else {
@@ -126,14 +125,13 @@ class mAudioStreamer {
       isSpeaking = false;
     }
 
-    print("waveform: amplitude $maxAmp");
-
     checkSilence();
+    print("${TagConst.TAG} ${audioDataNotifier.value}");
+
   }
 
   ///웹소켓 통신으로 실제로 pcm data를 isolate로 전송
   void sendAudio({required bool isFinal}) {
-    print("revert: sendAudio");
     String base64Data = transformToBase64(audio);
 
     // 웹소켓을 통해 wav 전송
@@ -146,6 +144,18 @@ class mAudioStreamer {
     // 버퍼를 비워줌
     audio.clear();
   }
+
+  void clearAudioData() {
+    // print("${TagConst.TAG} ${audioDataNotifier.value}");
+    // audioDataNotifier.value.clear(); // List<double> 타입을 가정
+    // print("${TagConst.TAG} ${audioDataNotifier.value}");
+
+    print("${TagConst.TAG} 이전 상태: ${audioDataNotifier.value}");
+    // 명시적으로 새로운 리스트 할당
+    audioDataNotifier.value = [];
+    print("${TagConst.TAG} 변경 후 상태: ${audioDataNotifier.value}");
+  }
+
 
   ///웹소켓 통신 정보를 stream에 추가하고, 서버로부터 응답을 받는 부분
   static void sendOverWebSocket(Map<String, dynamic> args) async {
@@ -192,7 +202,6 @@ class mAudioStreamer {
         DateTime.now().difference(lastSpokeAt!).inSeconds >= 3) {
       stopRecording();
       Fluttertoast.showToast(msg: "침묵이 감지되었습니다.");
-      print('revert: silence detected // ${DateTime.now()}');
     }
   }
 

@@ -1,3 +1,4 @@
+/// 리스트의 뒷부분을 잘라서 반환해주는 함수가 구현되어 있는 extension
 extension ListExtensions<T> on List<T> {
   List<T> takeLast(int n) {
     // 리스트의 길이가 n보다 작거나 같으면 전체 리스트를 반환
