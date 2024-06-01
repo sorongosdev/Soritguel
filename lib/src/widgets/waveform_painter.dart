@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 
 import '../../models/waveform_model.dart';
 
+/// 오디오 파형을 보여줌
 class WaveformView extends StatefulWidget {
   final mAudioStreamer audioStreamer;
   final waveFormWidth;
@@ -61,6 +62,7 @@ class _WaveformViewState extends State<WaveformView> {
   }
 }
 
+/// 오디오 파형을 그림
 class WaveformPainter extends CustomPainter {
   List<double> ampList; // 소리 세기가 담겨있는 리스트
   double rectWidth; // 그릴 직사각형 넓이
