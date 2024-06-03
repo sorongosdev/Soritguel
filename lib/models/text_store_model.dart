@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_project/constants/TagConst.dart';
+import 'package:flutter_project/constants/tag_const.dart';
 import 'package:flutter_project/src/audio_streamer.dart';
 import 'package:flutter_project/src/widgets/waveform_painter.dart';
 import 'package:fluttertoast/fluttertoast.dart';

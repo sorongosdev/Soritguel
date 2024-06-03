@@ -5,14 +5,16 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:audio_streamer/audio_streamer.dart';
-import 'package:flutter_project/constants/TagConst.dart';
-import 'package:flutter_project/constants/ZerothDefine.dart';
+import 'package:flutter_project/constants/waveform_const.dart';
+import 'package:flutter_project/constants/zeroth_define.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import 'dart:typed_data';
 import 'package:web_socket_channel/io.dart';
 import 'dart:isolate';
+
+import '../models/waveform_model.dart';
 
 class mAudioStreamer {
   ///proivder 관련 변수
@@ -28,13 +30,19 @@ class mAudioStreamer {
 
   int sampleRate = ZerothDefine.ZEROTH_RATE_44; // 샘플링율
   List<double> audio = []; // 현재 버퍼
-  ValueNotifier<List<double>> audioDataNotifier = ValueNotifier([]); // waveform_painter에서 변화를 감지
+  // ValueNotifier<List<double>> audioDataNotifier = ValueNotifier([]); // waveform_painter에서 변화를 감지
+  ValueNotifier<double> audioDataNotifier =
+      ValueNotifier(0.0); // waveform_painter에서 변화를 감지
+  double threshold = 0.1; // 침묵 기준 진폭
+
 
   StreamSubscription<List<double>>? audioSubscription;
   DateTime? lastSpokeAt; // 마지막 말한 시점의 시간
 
   ReceivePort receivePort = ReceivePort(); // 수신 포트 설정
   IOWebSocketChannel? channel; // 웹소켓 채널 객체
+
+  final WaveformModel waveformModel = WaveformModel();
 
   mAudioStreamer() {
     _init();
@@ -88,22 +96,33 @@ class mAudioStreamer {
 
   /// 오디오 샘플링을 멈추고 변수를 초기화
   Future<void> stopRecording() async {
-    // 일정 버퍼 사이즈가 안되었어도 녹음이 중지됐으므로 나머지 오디오를 전송
-    // if (audio.isNotEmpty) {
-    //   sendAudio(isFinal: true);
-    // }
+    // 중지버튼을 눌렀을 때만 동작할 것임
+    if (audio.reduce(max) > threshold && audio.length > 44100 / 2) {
+      sendAudio(isFinal: true);
+    }
 
     audioSubscription?.cancel();
     audio.clear(); // 오디오 데이터
     lastSpokeAt = null;
     isRecording.value = false;
+
+    while (audioDataNotifier.value > 0) {
+      // 음성 진폭이 양수면 녹음이 끝난 후 millisecondsPerStep 간격으로 파형을 서서히 감소시키는 로직을 동작시킴
+      await Future.delayed(
+          const Duration(milliseconds: WaveformConst.MILLISEC_PER_STEP));
+
+      audioDataNotifier.value =
+          audioDataNotifier.value * WaveformConst.FADING_SLOPE -
+              WaveformConst.FADING_CONST; // stopRecording이 실행되면 파형을 점점 줄임
+      if (audioDataNotifier.value < 0)
+        audioDataNotifier.value = 0; // 진폭이 음수가 되면 0으로 만들어줌 (음수가 되면 화면에 파형이 그려짐)
+    }
   }
 
   /// 오디오 샘플링 콜백
   void onAudio(List<double> buffer) async {
     // 버퍼에 음성 데이터를 추가
     audio.addAll(buffer);
-    // audioDataNotifier.value = List.from(audio);
 
     // 말마디 감지 로직
     // 일정 버퍼 사이즈를 넘어가면 서버에 wav 파일을 전송
@@ -111,11 +130,9 @@ class mAudioStreamer {
       sendAudio(isFinal: false);
     }
 
-    double threshold = 0.1; // 침묵 기준 진폭
     double maxAmp = buffer.reduce(max);
-    audioDataNotifier.value.add(maxAmp);
-    // ValueNotifier에 변경사항을 알리기 위해 새로운 리스트를 할당
-    audioDataNotifier.value = List.from(audioDataNotifier.value);
+
+    audioDataNotifier.value = maxAmp;
 
     if (maxAmp > threshold && !isSpeaking) {
       // 말하는 중인지 판단
@@ -126,8 +143,6 @@ class mAudioStreamer {
     }
 
     checkSilence();
-    print("${TagConst.TAG} ${audioDataNotifier.value}");
-
   }
 
   ///웹소켓 통신으로 실제로 pcm data를 isolate로 전송
@@ -144,18 +159,6 @@ class mAudioStreamer {
     // 버퍼를 비워줌
     audio.clear();
   }
-
-  void clearAudioData() {
-    // print("${TagConst.TAG} ${audioDataNotifier.value}");
-    // audioDataNotifier.value.clear(); // List<double> 타입을 가정
-    // print("${TagConst.TAG} ${audioDataNotifier.value}");
-
-    print("${TagConst.TAG} 이전 상태: ${audioDataNotifier.value}");
-    // 명시적으로 새로운 리스트 할당
-    audioDataNotifier.value = [];
-    print("${TagConst.TAG} 변경 후 상태: ${audioDataNotifier.value}");
-  }
-
 
   ///웹소켓 통신 정보를 stream에 추가하고, 서버로부터 응답을 받는 부분
   static void sendOverWebSocket(Map<String, dynamic> args) async {
@@ -186,7 +189,9 @@ class mAudioStreamer {
     for (int i = 0; i < audio.length; i++) {
       // 각 double 값을 16비트 정수로 변환하여 ByteData에 설정
       // 여기서 double 값이 -1.0에서 1.0 사이 (일반적인 오디오 데이터의 범위)
-      int sample = (audio[i] * 32767.0).round().clamp(-32768, 32767); // double을 16비트 정수로 변환
+      int sample = (audio[i] * 32767.0)
+          .round()
+          .clamp(-32768, 32767); // double을 16비트 정수로 변환
       byteData.setInt16(i * 2, sample, Endian.little);
     }
 
