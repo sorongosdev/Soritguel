@@ -5,9 +5,5 @@ class ZerothDefine {
   // static const String MY_URL_test = 'ws://192.168.1.102:8080';
 
   static const int ZEROTH_RATE_44 = 44100; // 샘플링율
-
   static const int ZEROTH_MONO = 1; // 채널수
-
-  static const double SPEAKING_THRESHOLD = -56; // 문장 감지 기준 데시벨
-  static const double BUFFER_CUT_RATIO = 0.95; // 단어 감지 감도 계수
 }
