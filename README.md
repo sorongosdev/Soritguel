@@ -1,6 +1,9 @@
 # 🗣️ 소릿글 - Spech To Text
 
 ## 📖 프로젝트 소개
+
+<img src="https://github.com/user-attachments/assets/64bd69a1-1767-4890-9ab2-33c715cd8087" width=300>
+
 - 스피치툴스AI에서 진행한 프로젝트입니다.
 - 스피치툴스AI의 자체 인공지능 STT 모델 개발을 위해 만든 ‘소릿글’의 앱 개발자로 참여했습니다.
   
@@ -126,12 +129,18 @@ lib/
 ## 📅 개발 기간
 2024.01 ~ 2024.06 (5개월)
 
-## 기능 설명
-`EDIT HERE`
+## 📜 기능 설명
+| 말하는 중 | 침묵 감지 | 텍스트 크기 변경 |
+| :-----: | :-----: | :-----: |
+| <img src="https://github.com/user-attachments/assets/589136e1-a920-4594-b114-f9f9cf4a627a" width="300"> | <img src="https://github.com/user-attachments/assets/bb23905b-4467-40cb-aa9c-ca0dae0dbb09" width="300"> | <img src="https://github.com/user-attachments/assets/c827bd03-289c-40a5-a216-1442fa5a15db" width="300"> |
+
+| 저장 | 불러오기 |
+| :-----: | :-----: |
+| <img src="https://github.com/user-attachments/assets/d77cd833-f118-4a5c-8b09-c13a8c3d4499" width="300"> | <img src="https://github.com/user-attachments/assets/aa868273-41c0-4d66-bcc1-a2d706fdab9c" width="300"> |
 
 ## 💥 트러블 슈팅
 
-### iOS 시뮬레이터 빌드 멈춤 문제
+### ⚠️ iOS 시뮬레이터 빌드 멈춤 문제
 - Xcode에서 아래와 같은 에러 발생시,
   ```
   [FATAL:flutter/display_list/skia/dl_sk_dispatcher.cc(277)] Check failed: false.
@@ -141,7 +150,7 @@ lib/
   flutter run --no-enable-impeller
   ```
 
-### 맥 안드로이드 에뮬레이터에서 마이크 기능 미동작 문제
+### ⚠️ 맥 안드로이드 에뮬레이터에서 마이크 기능 미동작 문제
 - 안드로이드 스튜디오에서 안드로이드 에뮬레이터를 실행하면 녹음 기능을 사용할 수 없음
 - 터미널에서 호스트 오디오 권한을 주어 실행해야함
 - iOS 시뮬레이터에서는 정상 동작함
