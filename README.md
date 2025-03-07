@@ -7,172 +7,136 @@
 ## 🛠️ 개발 환경
 
 ### 🔍 프레임워크 및 언어
-- Front-end: Flutter (x.x.x), Dart (x.x.x)
-- Back-end: Django (x.x.x)
+- Front-end: Flutter (3.29.0), Dart (3.7.0)
+- Back-end: Node.js (20.16.0)
 
 ### 🔧 개발 도구
 - Android Studio: 2024.2.2
 - Xcode: 15.2
 
 ### 📱 테스트 환경
-- iOS 시뮬레이터: iPhone (iOS x.x.x) `EDIT HERE`
-- iOS 실제 기기: iPhone11 (iOS 18.1.1) 
-- Android 에뮬레이터: API 레벨 xx (Android x.x) `EDIT HERE`
-- Android 실제 기기: API 레벨 29 (Android 10.0)
+- iOS 시뮬레이터: iPhone 15 Pro (iOS 17.2)
+- iOS 실제 기기: iPhone 11 (iOS 17.3.1) 
+- Android 에뮬레이터: API 레벨 34 (Android 14.0)
+- Android 실제 기기: API 레벨 28 (Android 9.0)
 
 ### 📚 주요 라이브러리 및 API
-- react-native-naver-map: 1.5.10
-- Firebase Cloud Messaging (FCM): 21.4.0
-- react-native-async-storage: 2.0.0
+- permission_handler: 11.2.0
+- path_provider: 2.1.2
+- web_socket_channel: 2.4.0
+- fluttertoast: 8.2.4
+- provider: 6.1.1
+- audio_streamer: 4.1.1
+- device_info_plus: 9.1.2
+- share_plus: 9.0.0
 
 ### 🔖 버전 및 이슈 관리
 - Git: 2.39.3
 
 ### 👥 협업 툴
-- 커뮤니케이션: Discord
+- 커뮤니케이션: Kakaotalk, Email
 - 문서 관리: Notion
 
 ### ☁️ 서비스 배포 환경
-- 백엔드 서버: `EDIT HERE`
-
-### 🎨 디자인
-- Figma
+- 백엔드 서버: 자체 WebSocket 서버 (WSS 프로토콜)
+- 배포 방식: 자체 호스팅
 
 ## ▶️ 프로젝트 실행 방법
 
 ### ⬇️ 필수 설치 사항
 
 #### 기본 환경
-- Node.js (v18.0.0 이상)
-- npm (v8.0.0 이상) 또는 yarn (v1.22.0 이상)
-- JDK (Java Development Kit) 17
+- Flutter SDK (최소 3.2.3 버전 필요)
+- Dart SDK (3.2.3 이상)
 - Android Studio (최신 버전)
-  - Android SDK
-  - Android SDK Platform
-  - Android Virtual Device
-- Xcode 15.0 이상 (iOS 개발용, macOS 필요)
-- CocoaPods 1.12.0 이상 (iOS 의존성 관리, macOS 필요)
-- Watchman (파일 시스템 변경 감지 도구)
+- Android SDK: Flutter, Dart 플러그인
+- Xcode (iOS 개발용, macOS 필요)
+- CocoaPods (iOS 의존성 관리, macOS 필요)
 
 #### 필수 의존성 패키지
-- react v18.3.1
-- react-native v0.75.4
-- @react-navigation/native v6.1.18
-- @react-navigation/stack v6.4.1
-- @react-navigation/bottom-tabs v6.6.1
-- @react-native-firebase/app v21.4.0 (푸시 알림용)
-- @react-native-firebase/messaging v21.4.0 (푸시 알림용)
-- @mj-studio/react-native-naver-map v1.5.10 (네이버 지도)
-- @react-native-async-storage/async-storage v2.0.0 (로컬 저장소)
-- react-native-gesture-handler v2.20.0
-- react-native-reanimated v3.15.5
-- react-native-safe-area-context v4.11.0
-- react-native-screens v3.34.0
-- react-native-svg v15.7.1
-- react-native-vector-icons v10.2.0
-- react-native-webview v13.12.3
-- axios v1.7.7 (네트워크 요청)
-- TypeScript 5.0.4 (타입 안정성)
+- flutter: SDK
+- cupertino_icons: 1.0.2
+- intl: 0.19.0
+- isolate: 2.1.1
 
 ### ⿻ 프로젝트 클론 및 설정
 - 프로젝트 클론
 ```bash
-git clone https://github.com/FastOrderApp/FastOrderApp.git
+git clone https://github.com/sorongosdev/flutter_app.git
 ```
 - 의존성 설치
 ```bash
-npm install
+flutter pub get
+```
+- iOS 의존성 반영
+```bash
+pod install
 ```
 
 ### 🌐 개발 서버 실행
 ```bash
 # iOS
-npx react-native run-ios
+flutter build ios
 
 # Android
-npx react-native run-android
+flutter build apk
 ```
 
 ## 🌿 브랜치 전략
-- 작업자의 이름으로 브랜치 생성(sora, jongwon, ...)
+- 중대한 변경 사항이 생길 때 브랜치에서 작업, 그 이외에는 main에서 작업
 
 ## 📁 프로젝트 구조
 ```
-src/
-├─ assets/       # 아이콘, 이미지 리소스
-├─ components/   # 공통 UI 컴포넌트 (NaverMap, BottomSheet 등)
-├─ consts/       # 상수 정의
-├─ navigation/   # 네비게이션 설정
-├─ pages/        # 주요 화면 (Main, Login, Store 등)
-└─ styles/       # 컴포넌트별 스타일 정의
+EDIT HERE
 ```
 
-## 🎭 개발 분담
+## 🎭 역할
 
 ### 🐚 도소라
-- 페이지: 지도 메인, 주문내역, 찜 목록, 마이페이지
-- 기능
-  - 메인 네이버 지도 API 연동
-  - 메인 검색 기능 구현
-  - 바텀 시트 제스처, 칩그룹 카테고리 필터링, 가게 상태에 따른 마커 표출
-  - 마이페이지 내 정보 보기, 포인트 충전하기
-  - FCM 푸시 알림 연동 및 구현
-  - 주문내역 불러오기, 찜 기능 구현
 
-### 이종원 `EDIT HERE`
-### 김선후 `EDIT HERE`
-### 정유민 `EDIT HERE`
-### 김도훈 `EDIT HERE`
+- Android(Java) >> Flutter 마이그레이션
+- 말마디로 음성을 전송하는 VAD 구현
+- 음성 크기에 따른 랜덤 파형 표출
+- Task별로 작업내용을 노션에 매뉴얼을 문서화하여 전달
+- [앱개발 매뉴얼 노션 링크]([https://www.example.com](https://juicy-dill-e52.notion.site/faff81c8570e4c8bb786913993020d41?pvs=4))
 
 ## 📅 개발 기간
-2024.09.xx ~ 2024.12.xx
+2024.01 ~ 2024.06 (5개월)
 
-## 📄 손님용 앱 화면별 기능
-### <<회원가입>>
-### <<로그인>>
-### <<메인>>
-- 네이버맵과 연동된 학교 앞 지도를 볼 수 있습니다.
-- 식당 카테고리별로 필터링 해서 볼 수 있습니다.
-- 상단의 검색창을 통해 찾는 가게를 검색할 수 있습니다.
-- 바텀 시트에서는 최근 주문내역을 기본을 보여줍니다.
-- 이 바텀시트의 주문내역에서 원터치 주문이 가능합니다.
-- 지도의 마커를 누르면 가게 정보를 볼 수 있습니다.
-
-| 메인 기본 화면 | 필터링한 화면 |
-| :-----: | :-----: |
-|  |  |
-
-### <<주문내역>>
-- 주문한 내역을 최신 순으로 볼 수 있습니다.
-- 가게를 찜할 수 있습니다.
-
-| 주문내역 화면 |
-| :-----: |
-|  |
-
-### <<찜 목록>>
-- 가게별로 찜한 목록을 볼 수 있습니다.
-- 편집 버튼을 눌러 찜한 음식점, 또는 메뉴를 삭제할 수 있습니다.
-
-| 찜 목록 화면 |
-| :-----: |
-|  |
-
-### <<마이페이지>>
-- 포인트를 충전할 수 있습니다.
-- 가지고 있는 쿠폰을 볼 수 있습니다.
-
-| 마이페이지 화면 |
-| :-----: |
-|  |
-
-### <<`EDIT HERE`>>
-
-## 📄 사장님용 앱 화면별 기능
-### <<`EDIT HERE`>>
+## 기능 설명
+`EDIT HERE`
 
 ## 💥 트러블 슈팅
-### <<`EDIT HERE`>>
 
-## 🎯 개선 목표
-### <<`EDIT HERE`>>
+### iOS 시뮬레이터 빌드 멈춤 문제
+- Xcode에서 아래와 같은 에러 발생시,
+  ```
+  [FATAL:flutter/display_list/skia/dl_sk_dispatcher.cc(277)] Check failed: false.
+  ```
+- 프로젝트의 루트 경로에서 아래 명령어로 실행
+  ```bash
+  flutter run --no-enable-impeller
+  ```
+
+### 맥 안드로이드 에뮬레이터에서 마이크 기능 미동작 문제
+- 안드로이드 스튜디오에서 안드로이드 에뮬레이터를 실행하면 녹음 기능을 사용할 수 없음
+- 터미널에서 호스트 오디오 권한을 주어 실행해야함
+- iOS 시뮬레이터에서는 정상 동작함
+- 해결 방법
+  1. 터미널에서 emulator 관련 환경 변수 추가
+  ```bash
+  echo 'export PATH=$PATH:/Users/sora/Library/Android/sdk/emulator' >> ~/.zshrc
+  
+  source ~/.zshrc
+  ```
+  
+  2. 에뮬레이터 리스트업
+  ```bash
+  emulator -list-avds
+  ```
+  
+  3. 오디오 권한을 허용하여 에뮬레이터 실행 (Pixel4_API34 부분에 에뮬레이터 이름)
+     띄어쓰기 없이 이름 설정할 것. 안드로이드 스튜디오의 Device Manager에서 이름 변경 가능
+  ```bash
+  emulator -avd Pixel4_API34 -qemu -allow-host-audio
+  ```
