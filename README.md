@@ -62,7 +62,7 @@
 - intl: 0.19.0
 - isolate: 2.1.1
 
-### 2) ⿻ 프로젝트 클론 및 설정
+### ⿻ 2) 프로젝트 클론 및 설정
 - 프로젝트 클론
 ```bash
 git clone https://github.com/sorongosdev/flutter_app.git
