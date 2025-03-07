@@ -87,7 +87,30 @@ flutter build apk
 
 ## 📁 프로젝트 구조
 ```
-EDIT HERE
+lib/
+├─ src/
+│  ├─ assets/            # 아이콘, 이미지 리소스
+│  ├─ components/        # 공통 UI 컴포넌트
+│  │  ├─ bottom_button_row.dart  # 하단 버튼 행
+│  │  ├─ description_text.dart   # 설명 텍스트
+│  │  ├─ mic_icon.dart          # 마이크 아이콘
+│  │  ├─ my_app_bar.dart        # 앱 바
+│  │  ├─ my_text_field.dart     # 텍스트 필드
+│  │  └─ waveform_painter.dart  # 파형 페인터
+│  ├─ consts/            # 상수 정의
+│  │  ├─ tag_const.dart         # 태그 상수
+│  │  ├─ waveform_const.dart    # 파형 상수
+│  │  └─ zeroth_define.dart     # 기본 정의
+│  ├─ models/            # 데이터 모델
+│  │  ├─ text_size_model.dart   # 텍스트 크기 모델
+│  │  ├─ text_store_model.dart  # 텍스트 저장소 모델
+│  │  └─ waveform_model.dart    # 파형 모델
+│  ├─ navigation/        # 네비게이션 설정
+│  ├─ pages/             # 주요 화면
+│  ├─ styles/            # 컴포넌트별 스타일 정의
+│  └─ utils/             # 유틸리티 함수
+│     └─ list_extensions.dart   # 리스트 확장 기능
+└─ main.dart            # 앱 진입점
 ```
 
 ## 🎭 역할
