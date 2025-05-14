@@ -13,14 +13,14 @@ dependencies:
     sdk: flutter
   permission_handler: ^11.2.0
   path_provider: ^2.1.2
-  web_socket_channel: ^2.4.0
+  web_socket_channel: ^3.0.3
   fluttertoast: ^8.2.4
   isolate: ^2.1.1
-  intl: ^0.19.0
+  intl: ^0.20.2
   provider: ^6.1.1
   audio_streamer: ^4.1.1
-  device_info_plus: ^9.1.2
-  share_plus: ^9.0.0
+  device_info_plus: ^11.4.0
+  share_plus: ^11.0.0
 
   cupertino_icons: ^1.0.2
 
@@ -28,7 +28,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
 
-  flutter_lints: ^3.0.1
+  flutter_lints: ^5.0.0
 
 flutter:
 
