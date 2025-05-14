@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/**설명 텍스트*/
+/// 설명 텍스트, 사용법을 안내
 class DescriptionText extends StatelessWidget {
   const DescriptionText({Key? key}) : super(key: key);
 

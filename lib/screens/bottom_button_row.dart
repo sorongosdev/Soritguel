@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../blocs/text_size/text_size_bloc.dart';
+import '../blocs/text_size/text_size_event.dart';
+import '../blocs/text_size/text_size_state.dart';
 
-import '../models/text_size_model.dart';
-
-///하단 버튼 행
-class BottomButtonRow extends StatefulWidget {
+/// 하단 버튼 행, 텍스트 크기 조절 버튼을 포함
+class BottomButtonRow extends StatelessWidget {
   final double buttonRowSideMargin;
 
   const BottomButtonRow({
@@ -13,14 +14,9 @@ class BottomButtonRow extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  _BottomButtonRowState createState() => _BottomButtonRowState();
-}
-
-class _BottomButtonRowState extends State<BottomButtonRow> {
-  @override
   Widget build(BuildContext context) {
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: widget.buttonRowSideMargin),
+      margin: EdgeInsets.symmetric(horizontal: buttonRowSideMargin),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: <Widget>[
@@ -31,19 +27,27 @@ class _BottomButtonRowState extends State<BottomButtonRow> {
             ),
           ),
           Expanded(
-            child: ElevatedButton(
-              onPressed: () {
-                Provider.of<TextSizeModel>(context, listen: false).increaseTextSize(); // 텍스트 크기 증가
+            child: BlocBuilder<TextSizeBloc, TextSizeState>(
+              builder: (context, state) {
+                return ElevatedButton(
+                  onPressed: () {
+                    context.read<TextSizeBloc>().add(IncreaseTextSize());
+                  },
+                  child: const Text('크게'),
+                );
               },
-              child: const Text('크게'),
             ),
           ),
           Expanded(
-            child: ElevatedButton(
-              onPressed: () {
-                Provider.of<TextSizeModel>(context, listen: false).decreaseTextSize(); // 텍스트 크기 감소
+            child: BlocBuilder<TextSizeBloc, TextSizeState>(
+              builder: (context, state) {
+                return ElevatedButton(
+                  onPressed: () {
+                    context.read<TextSizeBloc>().add(DecreaseTextSize());
+                  },
+                  child: const Text('작게'),
+                );
               },
-              child: const Text('작게'),
             ),
           ),
         ],
@@ -51,4 +55,3 @@ class _BottomButtonRowState extends State<BottomButtonRow> {
     );
   }
 }
-

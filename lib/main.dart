@@ -1,33 +1,47 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_project/models/waveform_model.dart';
-import 'package:flutter_project/src/widgets/waveform_painter.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import 'blocs/audio/audio_bloc.dart';
+import 'blocs/audio/audio_event.dart';
+import 'blocs/audio/audio_state.dart';
+import 'blocs/text_size/text_size_bloc.dart';
+import 'blocs/text_store/text_store_bloc.dart';
+import 'blocs/waveform/waveform_bloc.dart';
+import 'blocs/waveform/waveform_event.dart';
+import 'repositories/audio_repository.dart';
+import 'repositories/text_storage_repository.dart';
 import 'screens/my_app_bar.dart';
 import 'screens/mic_icon.dart';
 import 'screens/description_text.dart';
 import 'screens/my_text_field.dart';
 import 'screens/bottom_button_row.dart';
-import 'src/audio_streamer.dart';
-import 'models/text_size_model.dart';
-import 'models/text_store_model.dart';
+import 'widgets/waveform_painter.dart';
+
+// BlocObserver 추가
+class AppBlocObserver extends BlocObserver {
+  @override
+  void onEvent(Bloc bloc, Object? event) {
+    super.onEvent(bloc, event);
+    print('🔵 ${bloc.runtimeType} Event: $event');
+  }
+
+  @override
+  void onTransition(Bloc bloc, Transition transition) {
+    super.onTransition(bloc, transition);
+    print('🔄 ${bloc.runtimeType} Transition: $transition');
+  }
+
+  @override
+  void onError(BlocBase bloc, Object error, StackTrace stackTrace) {
+    print('❌ ${bloc.runtimeType} Error: $error');
+    super.onError(bloc, error, stackTrace);
+  }
+}
 
 void main() {
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(
-          create: (context) => TextSizeModel(),
-        ),
-        ChangeNotifierProvider(
-          create: (context) => TextStoreModel(),
-        ),
-        ChangeNotifierProvider(
-          create: (context) => WaveformModel(),
-        )
-      ],
-      child: MyApp(),
-    ),
-  );
+  // BlocObserver 설정
+  Bloc.observer = AppBlocObserver();
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -35,8 +49,28 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: MyWidget(),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<AudioBloc>(
+          create: (context) => AudioBloc(
+            repository: AudioRepository(),
+          ),
+        ),
+        BlocProvider<TextSizeBloc>(
+          create: (context) => TextSizeBloc(),
+        ),
+        BlocProvider<TextStoreBloc>(
+          create: (context) => TextStoreBloc(
+            repository: TextStorageRepository(),
+          ),
+        ),
+        BlocProvider<WaveformBloc>(
+          create: (context) => WaveformBloc(),
+        ),
+      ],
+      child: const MaterialApp(
+        home: MyWidget(),
+      ),
     );
   }
 }
@@ -49,12 +83,15 @@ class MyWidget extends StatefulWidget {
 }
 
 class MyWidgetState extends State<MyWidget> {
-  late final mAudioStreamer audioStreamer; // audioStreamer 인스턴스 선언
-
   @override
   void initState() {
     super.initState();
-    audioStreamer = mAudioStreamer(); // audioStreamer 초기화
+    
+    // 오디오 BLoC과 파형 BLoC 간의 연결 설정
+    // 오디오 진폭이 변경될 때 파형 업데이트
+    context.read<AudioBloc>().stream.listen((state) {
+      context.read<WaveformBloc>().add(UpdateWaveform(state.amplitude));
+    });
   }
 
   @override
@@ -72,22 +109,19 @@ class MyWidgetState extends State<MyWidget> {
     return GestureDetector(
       onTap: () {
         // 현재 포커스를 제거하여 키보드를 숨김
-        FocusScope.of(context).requestFocus(new FocusNode());
+        FocusScope.of(context).requestFocus(FocusNode());
       },
       child: Scaffold(
-        appBar: MyAppBar(),
+        appBar: const MyAppBar(),
         backgroundColor: Colors.white,
         body: Column(
           mainAxisAlignment: MainAxisAlignment.start,
           children: <Widget>[
             MicIcon(
               micTopMargin: micTopMargin,
-              audioStreamer: audioStreamer, // audioStreamer 인스턴스 전달
-              isRecording: audioStreamer.isRecording, // isRecording 전달
             ),
             const DescriptionText(),
             WaveformView(
-              audioStreamer: audioStreamer,
               waveFormHeight: waveFormHeight,
               waveFormWidth: screenWidth,
             ),
@@ -95,7 +129,6 @@ class MyWidgetState extends State<MyWidget> {
               textFieldTopMargin: textFieldTopMargin,
               textFieldSideMargin: textFieldSideMargin,
               textFieldMaxHeight: textFieldMaxHeight,
-              receivedText: audioStreamer.receivedText, // receivedText 전달
             ),
             BottomButtonRow(buttonRowSideMargin: buttonRowSideMargin)
           ],
