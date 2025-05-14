@@ -18,7 +18,7 @@ class TextStoreModel with ChangeNotifier {
   /// 텍스트필드의 텍스트를 읽어오기 위한 컨트롤러 지정
   void setController(TextEditingController controller) {
     _controller = controller;
-    notifyListeners();
+    // notifyListeners();
   }
 
   /// 저장 - 누르면 텍스트필드의 텍스트를 텍스트파일에 저장
